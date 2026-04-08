@@ -60,3 +60,28 @@ For reliable and quick assistance, all bugs, crashes and other issues should be 
 * SteamCMD installation and appinfo cache can be found at **C:\ProgramData\CreamInstaller**.
 * The program automatically and very quickly updates from [GitHub](https://github.com/pointfeev/CreamInstaller) using [Onova](https://github.com/Tyrrrz/Onova). *updates can be ignored*
 * The program source and other information can be found on [GitHub](https://github.com/pointfeev/CreamInstaller).
+
+
+## ⚠️ Antivirus False Positives
+
+Some antivirus software (including Windows Defender) may flag CreamInstaller or its embedded DLLs as threats. **These are false positives.**
+
+### Why it happens
+CreamInstaller embeds proxy DLLs (Koaloader, SmokeAPI, ScreamAPI, UplayR1/R2) that replace game DRM libraries. This behavior — replacing a system DLL — triggers heuristic detection in most AV engines, even though no malicious activity takes place.
+
+### What was verified
+- All embedded DLLs were statically analyzed (no execution)
+- SHA-256 hashes match the official builds by [@acidicoala](https://github.com/acidicoala)
+- No process injection, no keyloggers, no C2 servers, no persistence mechanisms
+- The only outbound URL is `raw.githubusercontent.com/acidicoala/public-entitlements` (DLC entitlement list)
+- Full source code is available and auditable in this repository
+
+### AV classification
+These tools are correctly classified as **HackTool / Riskware** — they bypass DRM protection. They are **not** viruses, worms, or trojans and pose no risk to your system.
+
+### What to do
+Add the installation folder to your antivirus exclusion list before running.
+**Windows Defender (PowerShell):**
+```powershell
+Add-MpPreference -ExclusionPath "C:\Path\To\CreamInstaller"
+
