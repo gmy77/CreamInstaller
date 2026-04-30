@@ -1,64 +1,6 @@
-### CreamInstaller v5.0: Automatic DLC Unlocker Installer & Configuration Generator
----
+### CreamInstaller: Automatic DLC Unlocker Installer & Configuration Generator
 
-# ⚠️ Disclaimer 
-## (Read before installation and Follow Us on Github !)
-
-> **This software is an open-source project developed for the community and is not affiliated with any organization or institution.**  
-> It is shared purely for **educational purposes**, software development testing, and to contribute to the growth of the open-source community.
-
----
-
-### 🛡️ Antivirus / False Positive Warning
-
-> ⚠️ **As is widely known, all software that modifies or interacts with DLL files may be flagged as a virus by antivirus programs.**
-
-VirusTotal scan results and antivirus software **may detect this project as malicious**. However:
-
-- The **entire project is open source** — no encrypted or obfuscated code is included.
-- It is intended solely for **educational and development purposes**.
-- This software is **for experienced users only**. If you are not comfortable reviewing source code yourself, **downloading and using this software is not recommended**.
-
-For further reading on antivirus false positives related to DLL-interacting tools, see:  
-📄 [Springer – *International Journal of Information Security* (2024)](https://link.springer.com/article/10.1007/s10207-024-00836-w)  
-📖 [Wikipedia – Antivirus Software](https://en.wikipedia.org/wiki/Antivirus_software)
-
----
-
-### ⚖️ Legal Responsibility
-By using this software, you agree that:
-- **All responsibility lies with you, the user.**
-- The platform and its contributors provide this software **"as is"**, without any warranty of any kind, express or implied.  
-  This includes, but is not limited to, the warranties of **merchantability**, **fitness for a particular purpose**, or **non-infringement**.  
-
-> ⚠️ **Use it at your own risk.**
-
----
-
-### 🎯 Intended Use
-The primary purpose of this project is to:
-- Educate the community by sharing open-source code.
-- Facilitate learning and encourage innovation through open collaboration.
-
-❌ **This software is not intended for production use.**  
-We strongly recommend purchasing and using professionally licensed software for your needs.
-
----
-
-### 🙌 Support the Community
-If you would like to support the community and this project, consider making a donation:  
-[![Donate](https://img.shields.io/badge/Donate-Click%20Here-orange?style=for-the-badge&logo=paypal)](https://ubd.one/donate)
-
----
-
-### 🚨 Report Abuse
-If you encounter any abuse or misuse of this software, please report it to:  
-📧 **[abuse@ubden.com](mailto:abuse@ubden.com)**
-
----
-
-> Thank you for being a part of the open-source community! 🌟
-
+![Program Preview Image](https://raw.githubusercontent.com/pointfeev/CreamInstaller/main/preview.png)
 
 ###### The program utilizes the latest versions of [Koaloader](https://github.com/acidicoala/Koaloader), [SmokeAPI](https://github.com/acidicoala/SmokeAPI), [ScreamAPI](https://github.com/acidicoala/ScreamAPI), [Uplay R1 Unlocker](https://github.com/acidicoala/UplayR1Unlocker) and [Uplay R2 Unlocker](https://github.com/acidicoala/UplayR2Unlocker), all by the wonderful [acidicoala](https://github.com/acidicoala), and all downloaded from the posts above and embedded into the program itself; no further downloads necessary on your part!
 ---
@@ -85,21 +27,17 @@ games and DLCs the user selects; however, through the use of **right-click conte
 
 ---
 #### Installation:
-1. Download the latest release from [GitHub Releases](https://github.com/ubden-community/CreamApi-CreamInstaller/releases/latest).
-2. Extract `CreamInstaller.exe` to anywhere on your computer. *It's completely self-contained.*
+1. Click [here](https://github.com/pointfeev/CreamInstaller/releases/latest/download/CreamInstaller.zip) to download the latest release from [GitHub](https://github.com/pointfeev/CreamInstaller).
+2. Extract the executable to anywhere on your computer you want. *It's completely self-contained.*
 
-If the program doesn't launch, install the [.NET 9 Desktop Runtime (x64)](https://dotnet.microsoft.com/en-us/download/dotnet/9.0).
-
----
-#### Building from Source:
-To build the project from source code, you need:
-1. [.NET 9 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/9.0) or later (SDK 10.x is also supported)
-2. Visual Studio 2022 (or later) with .NET desktop development workload, or Visual Studio Code with C# extension
-
-**Note:** The application targets .NET 9. The `global.json` file uses `rollForward: latestMajor` for maximum SDK compatibility.
+If the program doesn't seem to launch, try downloading and installing [.NET Desktop Runtime 7.0.5](https://download.visualstudio.microsoft.com/download/pr/dffb1939-cef1-4db3-a579-5475a3061cdd/578b208733c914c7b7357f6baa4ecfd6/windowsdesktop-runtime-7.0.5-win-x64.exe).
 
 ---
-#### **NOTE:** This program does not automatically download nor install actual DLC files for you. As the title of the program says, it's only a DLC Unlocker installer. Should the game you wish to unlock DLC for not already come with the DLCs installed (very many do not), you have to find, download, and install those yourself. Preferably, you should be referring to the proper cs.rin.ru post for the game(s) you're tinkering with; you'll usually find any answer to your problems there.
+#### **NOTE:** This program does not automatically download nor install actual DLC files for you; as the title of the program states, this program is only a *DLC Unlocker* installer. Should the game you wish to unlock DLC for not already come with the DLCs installed, as is the case with a good majority of games, you must find, download and install those to the game yourself.
+
+#### **ALSO NOTE:** Assuming the program functioned as it was supposed to by installing the DLC unlocker(s) correctly, your game not working or its DLCs not unlocking is not an issue I can do anything about and it's entirely up to you to seek the appropriate resources to fix it yourself (hint: [cs.rin.ru](https://cs.rin.ru/forum/viewforum.php?f=10)).
+
+#### Preferably, should you encounter any issue outside of the program itself, you should be referring said issues to the proper [cs.rin.ru](https://cs.rin.ru/forum/viewforum.php?f=10) post for the game you're tinkering with; 99% of the time you will find the answers to your problems there (you will probably also find the DLC files you're looking for there *wink wink*).
 
 ---
 #### Usage:
@@ -108,19 +46,42 @@ To build the project from source code, you need:
 3. Wait for the program to download and install SteamCMD (if you chose a Steam game). *Very fast, depends on internet speed.*
 4. Wait for the program to gather and cache the chosen games' information & DLCs. *May take a good amount of time on the first run, depends on how many games you chose and how many DLCs they have.*
 5. **CAREFULLY** select which games' DLCs you wish to unlock. *Obviously none of the DLC unlockers are tested for every single game!*
-6. Choose whether or not to install with Koaloader, and if so then also pick the proxy DLL to use. *If the default version.dll doesn't work, then see [here](https://forum.ubden.com.tr/konu/creaminstaller-auto-dlc-unlocker-installer-config-gen.1602/#google_vignette) to find one that does.*
+6. Choose whether or not to install with Koaloader, and if so then also pick the proxy DLL to use. *If the default version.dll doesn't work, then see [here](https://cs.rin.ru/forum/viewtopic.php?p=2552172#p2552172) to find one that does.*
 7. Click the **Generate and Install** button.
 8. Click the **OK** button to close the program.
 9. If any of the DLC unlockers cause problems with any of the games you installed them on, simply go back to step 5 and select what games you wish you **revert** changes to, and instead click the **Uninstall** button this time.
 
 ---
 ##### Bugs/Crashes/Issues:
-For reliable and quick assistance, all bugs, crashes and other issues should be referred to the [GitHub Issues](https://github.com/ubden-community/CreamApi-CreamInstaller/issues) page!
-
-> ⚠️ **No official support is provided.** For community help visit:
-> - [GitHub Discussions](https://github.com/ubden/CreamApi-CreamInstaller/discussions)
-> - [ubden Forum](https://forum.ubden.com.tr/konu/creaminstaller-auto-dlc-unlocker-installer-config-gen.1602/)
+For reliable and quick assistance, all bugs, crashes and other issues should be referred to the [GitHub Issues](https://github.com/pointfeev/CreamInstaller/issues) page!
 
 ---
+##### More Information:
+* SteamCMD installation and appinfo cache can be found at **C:\ProgramData\CreamInstaller**.
+* The program automatically and very quickly updates from [GitHub](https://github.com/pointfeev/CreamInstaller) using [Onova](https://github.com/Tyrrrz/Onova). *updates can be ignored*
+* The program source and other information can be found on [GitHub](https://github.com/pointfeev/CreamInstaller).
 
+
+## ⚠️ Antivirus False Positives
+
+Some antivirus software (including Windows Defender) may flag CreamInstaller or its embedded DLLs as threats. **These are false positives.**
+
+### Why it happens
+CreamInstaller embeds proxy DLLs (Koaloader, SmokeAPI, ScreamAPI, UplayR1/R2) that replace game DRM libraries. This behavior — replacing a system DLL — triggers heuristic detection in most AV engines, even though no malicious activity takes place.
+
+### What was verified
+- All embedded DLLs were statically analyzed (no execution)
+- SHA-256 hashes match the official builds by [@acidicoala](https://github.com/acidicoala)
+- No process injection, no keyloggers, no C2 servers, no persistence mechanisms
+- The only outbound URL is `raw.githubusercontent.com/acidicoala/public-entitlements` (DLC entitlement list)
+- Full source code is available and auditable in this repository
+
+### AV classification
+These tools are correctly classified as **HackTool / Riskware** — they bypass DRM protection. They are **not** viruses, worms, or trojans and pose no risk to your system.
+
+### What to do
+Add the installation folder to your antivirus exclusion list before running.
+**Windows Defender (PowerShell):**
+```powershell
+Add-MpPreference -ExclusionPath "C:\Path\To\CreamInstaller"
 
