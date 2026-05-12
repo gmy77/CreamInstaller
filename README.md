@@ -1,8 +1,25 @@
 ### CreamInstaller: Automatic DLC Unlocker Installer & Configuration Generator
 
+[![Version](https://img.shields.io/github/v/release/gmy77/CreamInstaller?label=release)](https://github.com/gmy77/CreamInstaller/releases/latest)
+[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/download/dotnet/9.0)
+[![License](https://img.shields.io/github/license/gmy77/CreamInstaller)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows)](https://github.com/gmy77/CreamInstaller/releases/latest)
+
 ![Program Preview Image](https://raw.githubusercontent.com/gmy77/CreamInstaller/main/preview.png)
 
 ###### The program utilizes the latest versions of [Koaloader](https://github.com/acidicoala/Koaloader), [SmokeAPI](https://github.com/acidicoala/SmokeAPI), [ScreamAPI](https://github.com/acidicoala/ScreamAPI), [Uplay R1 Unlocker](https://github.com/acidicoala/UplayR1Unlocker) and [Uplay R2 Unlocker](https://github.com/acidicoala/UplayR2Unlocker), all by the wonderful [acidicoala](https://github.com/acidicoala), and all downloaded from the posts above and embedded into the program itself; no further downloads necessary on your part!
+
+---
+#### What's new in v5.0:
+* Migrated to **.NET 9** (was .NET 7, which is end-of-life).
+* Replaced blocking `Thread.Sleep` / `.Wait()` calls with `async`/`await` (`Task.Delay`) in `SteamCMD`, `SteamStore`, `InstallForm`, `SelectForm` — eliminates UI freezes and potential deadlocks.
+* Async file I/O (`File.ReadAllTextAsync`) in `SteamLibrary` for faster startup with large libraries.
+* Fixed unmanaged handle leak in `IconGrabber` (`GetHicon()`).
+* `HttpResponseMessage` lifetime properly scoped in `EpicStore` (`using`).
+* SmokeAPI config: `extra_inventory_items` corrected from object to array.
+* Dark theme UI rendering fixes.
+* Path validation, race condition and other security/correctness fixes.
+
 ---
 #### Description:
 Automatically finds all installed Steam, Epic and Ubisoft games with their respective DLC-related DLL locations on the user's computer,
@@ -50,6 +67,21 @@ If the program doesn't seem to launch, try downloading and installing the [.NET 
 7. Click the **Generate and Install** button.
 8. Click the **OK** button to close the program.
 9. If any of the DLC unlockers cause problems with any of the games you installed them on, simply go back to step 5 and select what games you wish you **revert** changes to, and instead click the **Uninstall** button this time.
+
+---
+#### Building from source:
+Requirements:
+* [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) (the pinned version is declared in `global.json`)
+* Windows (the project targets `net9.0-windows` and uses Windows Forms)
+* Visual Studio 2022 (17.12+) or the .NET CLI
+
+Clone and build a single-file, self-contained Release binary:
+```powershell
+git clone https://github.com/gmy77/CreamInstaller.git
+cd CreamInstaller
+dotnet publish CreamInstaller/CreamInstaller.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+```
+The output binary will be in `CreamInstaller/bin/Release/net9.0-windows/win-x64/publish/`.
 
 ---
 ##### Bugs/Crashes/Issues:
