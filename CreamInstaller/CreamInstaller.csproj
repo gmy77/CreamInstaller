@@ -20,7 +20,6 @@
 		<DebugSymbols>true</DebugSymbols>
 		<DefineConstants>$(DefineConstants)</DefineConstants>
 		<ProduceReferenceAssembly>False</ProduceReferenceAssembly>
-		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<AssemblyName>$(Company)</AssemblyName>
