@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Drawing;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using CreamInstaller.Platforms.Paradox;
@@ -50,8 +51,8 @@ internal sealed class ContextMenuItem : ToolStripMenuItem
                 switch (imageIdentifier)
                 {
                     case "Paradox Launcher":
-                        if (ParadoxLauncher.InstallPath.DirectoryExists())
-                            foreach (string file in ParadoxLauncher.InstallPath.EnumerateDirectory("*.exe"))
+                        if (Directory.Exists(ParadoxLauncher.InstallPath))
+                            foreach (string file in Directory.EnumerateFiles(ParadoxLauncher.InstallPath, "*.exe"))
                             {
                                 image = file.GetFileIconImage();
                                 break;
@@ -98,27 +99,20 @@ internal sealed class ContextMenuItem : ToolStripMenuItem
     private static async Task TryImageIdentifierInfo(ContextMenuItem item, (string id, string iconUrl) imageIdentifierInfo, Action onFail = null)
         => await Task.Run(async () =>
         {
-            try
+            (string id, string iconUrl) = imageIdentifierInfo;
+            string imageIdentifier = "Icon_" + id;
+            if (Images.TryGetValue(imageIdentifier, out Image image) && image is not null)
+                item.Image = image;
+            else
             {
-                (string id, string iconUrl) = imageIdentifierInfo;
-                string imageIdentifier = "Icon_" + id;
-                if (Images.TryGetValue(imageIdentifier, out Image image) && image is not null)
-                    item.Image = image;
-                else
+                image = await HttpClientManager.GetImageFromUrl(iconUrl);
+                if (image is not null)
                 {
-                    image = await HttpClientManager.GetImageFromUrl(iconUrl);
-                    if (image is not null)
-                    {
-                        Images[imageIdentifier] = image;
-                        item.Image = image;
-                    }
-                    else
-                        onFail?.Invoke();
+                    Images[imageIdentifier] = image;
+                    item.Image = image;
                 }
-            }
-            catch
-            {
-                // ignored
+                else
+                    onFail?.Invoke();
             }
         });
 

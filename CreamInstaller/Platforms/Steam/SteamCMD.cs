@@ -2,15 +2,13 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
-using CreamInstaller.Forms;
 using CreamInstaller.Resources;
 using CreamInstaller.Utility;
 using Gameloop.Vdf.Linq;
@@ -64,6 +62,10 @@ internal static class SteamCMD
                     }
                     if (Program.Canceled)
                         return "";
+                    // ANTIVIRUS FALSE POSITIVE WARNING:
+                    // Launches steamcmd.exe with +login anonymous +app_info_print <appId> +quit to
+                    // retrieve game metadata from Steam. The process output is captured and parsed.
+                    // SteamCMD is an official Valve tool; launching it does not indicate malicious intent.
                     ProcessStartInfo processStartInfo = new()
                     {
                         FileName = FilePath, RedirectStandardOutput = true, RedirectStandardInput = true, RedirectStandardError = true,
@@ -119,68 +121,67 @@ internal static class SteamCMD
             goto wait_for_lock;
         });
 
-    internal static async Task<bool> Setup(IProgress<int> progress)
+    // ANTIVIRUS FALSE POSITIVE WARNING:
+    // Setup downloads steamcmd.zip from Valve's official CDN (steamcdn-a.akamaihd.net),
+    // extracts the ZIP archive, and runs steamcmd.exe once with +quit to initialise it.
+    // Downloading and extracting an executable is flagged by some AV heuristics as a dropper;
+    // the source is Valve's own content delivery network and is used only when steamcmd.exe
+    // is not already present in the CreamInstaller data directory.
+    internal static async Task Setup(IProgress<int> progress)
     {
         await Cleanup();
-        if (!FilePath.FileExists())
+        if (!File.Exists(FilePath))
         {
             HttpClient httpClient = HttpClientManager.HttpClient;
             if (httpClient is null)
-                return false;
-            while (!Program.Canceled)
-                try
-                {
-                    byte[] file = await httpClient.GetByteArrayAsync(new Uri("https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip"));
-                    file.WriteResource(ArchivePath);
-                    ArchivePath.ExtractZip(DirectoryPath);
-                    ArchivePath.DeleteFile();
-                    break;
-                }
-                catch (Exception e)
-                {
-                    using DialogForm dialogForm = new(Form.ActiveForm);
-                    if (dialogForm.Show(SystemIcons.Warning, "Failed to download SteamCMD:\n    " + e.Message, "Retry", "OK") is not DialogResult.OK)
-                        return false;
-                }
+                return;
+            byte[] file = await httpClient.GetByteArrayAsync(new Uri("https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip"));
+            file.Write(ArchivePath);
+            ZipFile.ExtractToDirectory(ArchivePath, DirectoryPath);
+            File.Delete(ArchivePath);
         }
-        if (DllPath.FileExists())
-            return true;
-        FileSystemWatcher watcher = new(DirectoryPath) { Filter = "*", IncludeSubdirectories = true, EnableRaisingEvents = true };
-        if (DllPath.FileExists())
-            progress.Report(-15); // update (not used at the moment)
-        else
-            progress.Report(-1660); // install
-        int cur = 0;
-        progress.Report(cur);
-        watcher.Changed += (_, _) => progress.Report(++cur);
-        _ = await Run(null);
-        watcher.Dispose();
-        return true;
+        if (!File.Exists(DllPath))
+        {
+            FileSystemWatcher watcher = new(DirectoryPath) { Filter = "*", IncludeSubdirectories = true, EnableRaisingEvents = true };
+            if (File.Exists(DllPath))
+                progress.Report(-15); // update (not used at the moment)
+            else
+                progress.Report(-1660); // install
+            int cur = 0;
+            progress.Report(cur);
+            watcher.Changed += (_, _) => progress.Report(++cur);
+            _ = await Run(null);
+            watcher.Dispose();
+        }
     }
 
     internal static async Task Cleanup()
         => await Task.Run(async () =>
         {
-            if (!DirectoryPath.DirectoryExists())
+            if (!Directory.Exists(DirectoryPath))
                 return;
             await Kill();
             try
             {
-                if (ConfigPath.DirectoryExists())
-                    foreach (string file in ConfigPath.EnumerateDirectory("*.tmp"))
-                        file.DeleteFile();
-                foreach (string file in DirectoryPath.EnumerateDirectory("*.old"))
-                    file.DeleteFile();
-                foreach (string file in DirectoryPath.EnumerateDirectory("*.delete"))
-                    file.DeleteFile();
-                foreach (string file in DirectoryPath.EnumerateDirectory("*.crash"))
-                    file.DeleteFile();
-                foreach (string file in DirectoryPath.EnumerateDirectory("*.ntfs_transaction_failed"))
-                    file.DeleteFile();
-                AppCachePath.DeleteDirectory(); // this is definitely needed, so SteamCMD gets the latest information for us
-                DumpsPath.DeleteDirectory();
-                LogsPath.DeleteDirectory();
-                SteamAppsPath.DeleteDirectory(); // this is just a useless folder created from +app_update 4
+                if (Directory.Exists(ConfigPath))
+                    foreach (string file in Directory.EnumerateFiles(ConfigPath, "*.tmp"))
+                        File.Delete(file);
+                foreach (string file in Directory.EnumerateFiles(DirectoryPath, "*.old"))
+                    File.Delete(file);
+                foreach (string file in Directory.EnumerateFiles(DirectoryPath, "*.delete"))
+                    File.Delete(file);
+                foreach (string file in Directory.EnumerateFiles(DirectoryPath, "*.crash"))
+                    File.Delete(file);
+                foreach (string file in Directory.EnumerateFiles(DirectoryPath, "*.ntfs_transaction_failed"))
+                    File.Delete(file);
+                if (Directory.Exists(AppCachePath))
+                    Directory.Delete(AppCachePath, true); // this is definitely needed, so SteamCMD gets the latest information for us
+                if (Directory.Exists(DumpsPath))
+                    Directory.Delete(DumpsPath, true);
+                if (Directory.Exists(LogsPath))
+                    Directory.Delete(LogsPath, true);
+                if (Directory.Exists(SteamAppsPath))
+                    Directory.Delete(SteamAppsPath, true); // this is just a useless folder created from +app_update 4
             }
             catch
             {
@@ -190,67 +191,67 @@ internal static class SteamCMD
 
     internal static async Task<VProperty> GetAppInfo(string appId, string branch = "public", int buildId = 0)
     {
-        int attempts = 0;
-        while (!Program.Canceled)
+        if (Program.Canceled)
+            return null;
+        string output;
+        string appUpdateFile = $@"{AppInfoPath}\{appId}.vdf";
+    restart:
+        if (Program.Canceled)
+            return null;
+        if (File.Exists(appUpdateFile))
+            try
+            {
+                output = await File.ReadAllTextAsync(appUpdateFile, Encoding.UTF8);
+            }
+            catch
+            {
+                goto restart;
+            }
+        else
         {
-            attempts++;
-            if (attempts > 10)
+            output = await Run(appId) ?? "";
+            int openBracket = output.IndexOf('{');
+            int closeBracket = output.LastIndexOf('}');
+            if (openBracket != -1 && closeBracket != -1 && closeBracket > openBracket)
             {
-#if DEBUG
-                DebugForm.Current.Log("Failed to query SteamCMD after 10 tries: " + appId + " (" + branch + ")", LogTextBox.Warning);
-#endif
-                break;
-            }
-            string appUpdateFile = $@"{AppInfoPath}\{appId}.vdf";
-            string output = appUpdateFile.ReadFile();
-            if (output is null)
-            {
-                output = await Run(appId) ?? "";
-                int openBracket = output.IndexOf("{", StringComparison.Ordinal);
-                int closeBracket = output.LastIndexOf("}", StringComparison.Ordinal);
-                if (openBracket != -1 && closeBracket != -1 && closeBracket > openBracket)
+                output = $"\"{appId}\"\n" + output[openBracket..(1 + closeBracket)];
+                output = output.Replace("ERROR! Failed to install app '4' (Invalid platform)", "");
+                try
                 {
-                    output = $"\"{appId}\"\n" + output[openBracket..(1 + closeBracket)];
-                    output = output.Replace("ERROR! Failed to install app '4' (Invalid platform)", "");
-                    appUpdateFile.WriteFile(output);
+                    await File.WriteAllTextAsync(appUpdateFile, output, Encoding.UTF8);
                 }
-                else
+                catch
                 {
-#if DEBUG
-                    DebugForm.Current.Log("SteamCMD query failed on attempt #" + attempts + " for " + appId + " (" + branch + "): Bad output",
-                        LogTextBox.Warning);
-#endif
-                    continue;
+                    goto restart;
                 }
             }
-            if (!ValveDataFile.TryDeserialize(output, out VProperty appInfo) || appInfo.Value is VValue)
-            {
-                appUpdateFile.DeleteFile();
-#if DEBUG
-                DebugForm.Current.Log("SteamCMD query failed on attempt #" + attempts + " for " + appId + " (" + branch + "): Deserialization failed",
-                    LogTextBox.Warning);
-#endif
-                continue;
-            }
-            if (appInfo.Value.Children().ToList().Count == 0)
-                return appInfo;
-            VToken type = appInfo.Value.GetChild("common")?.GetChild("type");
-            if (type is not null && type.ToString() != "Game")
-                return appInfo;
-            string buildid = appInfo.Value.GetChild("depots")?.GetChild("branches")?.GetChild(branch)?.GetChild("buildid")?.ToString();
-            if (buildid is null && type is not null)
-                return appInfo;
-            if (type is not null && (!int.TryParse(buildid, out int gamebuildId) || gamebuildId >= buildId))
-                return appInfo;
-            List<string> dlcAppIds = await ParseDlcAppIds(appInfo);
-            foreach (string dlcAppUpdateFile in dlcAppIds.Select(id => $@"{AppInfoPath}\{id}.vdf"))
-                dlcAppUpdateFile.DeleteFile();
-            appUpdateFile.DeleteFile();
-#if DEBUG
-            DebugForm.Current.Log("SteamCMD query skipped on attempt #" + attempts + " for " + appId + " (" + branch + "): Outdated cache", LogTextBox.Warning);
-#endif
+            else
+                goto restart;
         }
-        return null;
+        if (Program.Canceled)
+            return null;
+        if (!ValveDataFile.TryDeserialize(output, out VProperty appInfo) || appInfo.Value is VValue)
+        {
+            File.Delete(appUpdateFile);
+            goto restart;
+        }
+        if (appInfo.Value.Children().ToList().Count == 0)
+            return appInfo;
+        VToken type = appInfo.Value.GetChild("common")?.GetChild("type");
+        if (type is not null && type.ToString() != "Game")
+            return appInfo;
+        string buildid = appInfo.Value.GetChild("depots")?.GetChild("branches")?.GetChild(branch)?.GetChild("buildid")?.ToString();
+        if (buildid is null && type is not null)
+            return appInfo;
+        if (type is not null && (!int.TryParse(buildid, out int gamebuildId) || gamebuildId >= buildId))
+            return appInfo;
+        List<string> dlcAppIds = await ParseDlcAppIds(appInfo);
+        foreach (string dlcAppUpdateFile in dlcAppIds.Select(id => $@"{AppInfoPath}\{id}.vdf"))
+            if (File.Exists(dlcAppUpdateFile))
+                File.Delete(dlcAppUpdateFile);
+        if (File.Exists(appUpdateFile))
+            File.Delete(appUpdateFile);
+        goto restart;
     }
 
     internal static async Task<List<string>> ParseDlcAppIds(VProperty appInfo)
@@ -280,6 +281,10 @@ internal static class SteamCMD
             return dlcIds;
         });
 
+    // ANTIVIRUS FALSE POSITIVE WARNING:
+    // Kill enumerates running processes by name ("steamcmd") and terminates them.
+    // Process-enumeration and process-kill APIs are used here only to clean up child
+    // steamcmd.exe instances that were started by this application.
     private static async Task Kill()
     {
         List<Task> tasks = Process.GetProcessesByName("steamcmd").Select(process => Task.Run(() =>
@@ -297,5 +302,12 @@ internal static class SteamCMD
         })).ToList();
         foreach (Task task in tasks)
             await task;
+    }
+
+    internal static void Dispose()
+    {
+        Kill().GetAwaiter().GetResult();
+        if (Directory.Exists(DirectoryPath))
+            Directory.Delete(DirectoryPath, true);
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -25,14 +26,14 @@ internal static class EpicStore
     {
         List<(string id, string name, string product, string icon, string developer)> dlcIds = new();
         string cacheFile = ProgramData.AppInfoPath + @$"\{categoryNamespace}.json";
-        bool cachedExists = cacheFile.FileExists();
+        bool cachedExists = File.Exists(cacheFile);
         Response response = null;
         if (!cachedExists || ProgramData.CheckCooldown(categoryNamespace, CooldownEntitlement))
         {
             response = await QueryGraphQL(categoryNamespace);
             try
             {
-                cacheFile.WriteFile(JsonConvert.SerializeObject(response, Formatting.Indented));
+                await File.WriteAllTextAsync(cacheFile, JsonConvert.SerializeObject(response, Formatting.Indented));
             }
             catch
             {
@@ -42,11 +43,11 @@ internal static class EpicStore
         else
             try
             {
-                response = JsonConvert.DeserializeObject<Response>(cacheFile.ReadFile());
+                response = JsonConvert.DeserializeObject<Response>(await File.ReadAllTextAsync(cacheFile));
             }
             catch
             {
-                cacheFile.DeleteFile();
+                File.Delete(cacheFile);
             }
         if (response is null)
             return dlcIds;
@@ -120,7 +121,7 @@ internal static class EpicStore
             HttpClient client = HttpClientManager.HttpClient;
             if (client is null)
                 return null;
-            HttpResponseMessage httpResponse = await client.PostAsync(new Uri("https://graphql.epicgames.com/graphql"), content);
+            using HttpResponseMessage httpResponse = await client.PostAsync(new Uri("https://graphql.epicgames.com/graphql"), content);
             _ = httpResponse.EnsureSuccessStatusCode();
             string response = await httpResponse.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<Response>(response);

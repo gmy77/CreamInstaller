@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using CreamInstaller.Utility;
 using Gameloop.Vdf.Linq;
@@ -47,13 +49,13 @@ internal static class SteamLibrary
         => await Task.Run(() =>
         {
             List<(string appId, string name, string branch, int buildId, string gameDirectory)> games = new();
-            if (Program.Canceled || !libraryDirectory.DirectoryExists())
+            if (Program.Canceled || !Directory.Exists(libraryDirectory))
                 return games;
-            foreach (string file in libraryDirectory.EnumerateDirectory("*.acf"))
+            foreach (string file in Directory.EnumerateFiles(libraryDirectory, "*.acf"))
             {
                 if (Program.Canceled)
                     return games;
-                if (!ValveDataFile.TryDeserialize(file.ReadFile(), out VProperty result))
+                if (!ValveDataFile.TryDeserialize(File.ReadAllText(file, Encoding.UTF8), out VProperty result))
                     continue;
                 string appId = result.Value.GetChild("appid")?.ToString();
                 string installdir = result.Value.GetChild("installdir")?.ToString();
@@ -69,15 +71,7 @@ internal static class SteamLibrary
                     continue;
                 if (!int.TryParse(buildId, out int buildIdInt))
                     continue;
-                VToken userConfig = result.Value.GetChild("UserConfig");
-                string branch = userConfig?.GetChild("BetaKey")?.ToString();
-                branch ??= userConfig?.GetChild("betakey")?.ToString();
-                if (branch is null)
-                {
-                    VToken mountedConfig = result.Value.GetChild("MountedConfig");
-                    branch = mountedConfig?.GetChild("BetaKey")?.ToString();
-                    branch ??= mountedConfig?.GetChild("betakey")?.ToString();
-                }
+                string branch = result.Value.GetChild("UserConfig")?.GetChild("betakey")?.ToString();
                 if (string.IsNullOrWhiteSpace(branch))
                     branch = "public";
                 games.Add((appId, name, branch, buildIdInt, gameDirectory));
@@ -92,14 +86,14 @@ internal static class SteamLibrary
             if (Program.Canceled)
                 return gameDirectories;
             string steamInstallPath = InstallPath;
-            if (steamInstallPath == null || !steamInstallPath.DirectoryExists())
+            if (steamInstallPath == null || !Directory.Exists(steamInstallPath))
                 return gameDirectories;
             string libraryFolder = steamInstallPath + @"\steamapps";
-            if (!libraryFolder.DirectoryExists())
+            if (!Directory.Exists(libraryFolder))
                 return gameDirectories;
             gameDirectories.Add(libraryFolder);
             string libraryFolders = libraryFolder + @"\libraryfolders.vdf";
-            if (!libraryFolders.FileExists() || !ValveDataFile.TryDeserialize(libraryFolders.ReadFile(), out VProperty result))
+            if (!File.Exists(libraryFolders) || !ValveDataFile.TryDeserialize(File.ReadAllText(libraryFolders, Encoding.UTF8), out VProperty result))
                 return gameDirectories;
             foreach (VToken vToken in result.Value.Where(p => p is VProperty property && int.TryParse(property.Key, out int _)))
             {
@@ -108,7 +102,7 @@ internal static class SteamLibrary
                 if (string.IsNullOrWhiteSpace(path))
                     continue;
                 path += @"\steamapps";
-                if (path.DirectoryExists() && !gameDirectories.Contains(path))
+                if (Directory.Exists(path) && !gameDirectories.Contains(path))
                     gameDirectories.Add(path);
             }
             return gameDirectories;

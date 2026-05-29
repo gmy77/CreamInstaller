@@ -12,17 +12,16 @@ internal sealed partial class SelectDialogForm : CustomForm
     private readonly List<(Platform platform, string id, string name)> selected = new();
     internal SelectDialogForm(IWin32Window owner) : base(owner) => InitializeComponent();
 
-    internal DialogResult QueryUser(string groupBoxText, List<(Platform platform, string id, string name, bool alreadySelected)> potentialChoices,
-        out List<(Platform platform, string id, string name)> choices)
+    internal List<(Platform platform, string id, string name)> QueryUser(string groupBoxText,
+        List<(Platform platform, string id, string name, bool alreadySelected)> choices)
     {
-        choices = null;
-        if (!potentialChoices.Any())
-            return DialogResult.Cancel;
+        if (!choices.Any())
+            return null;
         groupBox.Text = groupBoxText;
         allCheckBox.Enabled = false;
         acceptButton.Enabled = false;
         selectionTreeView.AfterCheck += OnTreeNodeChecked;
-        foreach ((Platform platform, string id, string name, bool alreadySelected) in potentialChoices)
+        foreach ((Platform platform, string id, string name, bool alreadySelected) in choices)
         {
             TreeNode node = new() { Tag = platform, Name = id, Text = name, Checked = alreadySelected };
             OnTreeNodeChecked(node);
@@ -39,8 +38,7 @@ internal sealed partial class SelectDialogForm : CustomForm
         loadButton.Enabled = ProgramData.ReadProgramChoices() is not null;
         OnResize(null, null);
         Resize += OnResize;
-        choices = selected;
-        return ShowDialog();
+        return ShowDialog() == DialogResult.OK ? selected : null;
     }
 
     private void OnTreeNodeChecked(object sender, TreeViewEventArgs e)
@@ -96,7 +94,7 @@ internal sealed partial class SelectDialogForm : CustomForm
 
     private void OnSave(object sender, EventArgs e)
     {
-        ProgramData.WriteProgramChoices(selectionTreeView.Nodes.Cast<TreeNode>().Where(n => n.Checked).Select(node => ((Platform)node.Tag, node.Name)));
+        ProgramData.WriteProgramChoices(selectionTreeView.Nodes.Cast<TreeNode>().Where(n => n.Checked).Select(node => ((Platform)node.Tag, node.Name)).ToList());
         loadButton.Enabled = ProgramData.ReadProgramChoices() is not null;
     }
 }

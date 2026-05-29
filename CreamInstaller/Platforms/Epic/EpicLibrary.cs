@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using CreamInstaller.Utility;
 using Microsoft.Win32;
-using Newtonsoft.Json;
 using static CreamInstaller.Resources.Resources;
 
 namespace CreamInstaller.Platforms.Epic;
@@ -21,7 +21,7 @@ internal static class EpicLibrary
             epicManifestsPath ??= Registry.GetValue(@"HKEY_CURRENT_USER\Software\Wow6432Node\Epic Games\EOS", "ModSdkMetadataDir", null) as string;
             epicManifestsPath ??= Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Epic Games\EpicGamesLauncher", "AppDataPath", null) as string;
             epicManifestsPath ??= Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Epic Games\EpicGamesLauncher", "AppDataPath", null) as string;
-            if (epicManifestsPath is not null && epicManifestsPath.EndsWith(@"\Data", StringComparison.Ordinal))
+            if (epicManifestsPath is not null && epicManifestsPath.EndsWith(@"\Data"))
                 epicManifestsPath += @"\Manifests";
             return epicManifestsPath.BeautifyPath();
         }
@@ -35,16 +35,16 @@ internal static class EpicLibrary
         {
             List<Manifest> games = new();
             string manifests = EpicManifestsPath;
-            if (!manifests.DirectoryExists())
+            if (!Directory.Exists(manifests))
                 return games;
-            foreach (string file in manifests.EnumerateDirectory("*.item"))
+            foreach (string file in Directory.EnumerateFiles(manifests, "*.item"))
             {
                 if (Program.Canceled)
                     return games;
-                string json = file.ReadFile();
+                string json = File.ReadAllText(file);
                 try
                 {
-                    Manifest manifest = JsonConvert.DeserializeObject<Manifest>(json);
+                    Manifest manifest = JsonSerializer.Deserialize<Manifest>(json);
                     if (manifest is not null && manifest.CatalogItemId == manifest.MainGameCatalogItemId && !games.Any(g
                             => g.CatalogItemId == manifest.CatalogItemId && g.InstallLocation == manifest.InstallLocation))
                         games.Add(manifest);

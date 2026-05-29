@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -36,14 +35,20 @@ internal static class Koaloader
         config = directory + @"\Koaloader.config.json";
     }
 
+    // ANTIVIRUS FALSE POSITIVE WARNING:
+    // WriteProxy writes a Koaloader DLL (a DLL proxy / shim) named after a well-known Windows
+    // system DLL (e.g. version.dll, d3d9.dll) into the game's installation directory.
+    // This is a standard DLL-proxying technique used by the Koaloader project to load
+    // additional modules. The DLL is extracted from embedded resources and validated via MD5.
+    // This pattern is commonly misidentified as DLL-hijacking malware by antivirus engines.
     private static void WriteProxy(this string path, string proxyName, BinaryType binaryType)
     {
-        foreach (string resourceIdentifier in EmbeddedResources.FindAll(r => r.StartsWith("Koaloader", StringComparison.Ordinal)))
+        foreach (string resourceIdentifier in EmbeddedResources.FindAll(r => r.StartsWith("Koaloader")))
         {
             resourceIdentifier.GetProxyInfoFromIdentifier(out string _proxyName, out BinaryType _binaryType);
             if (_proxyName != proxyName || _binaryType != binaryType)
                 continue;
-            resourceIdentifier.WriteManifestResource(path);
+            resourceIdentifier.Write(path);
             break;
         }
     }
@@ -60,34 +65,34 @@ internal static class Koaloader
     private static void CheckConfig(string directory, InstallForm installForm = null)
     {
         directory.GetKoaloaderComponents(out string old_config, out string config);
-        if (old_config.FileExists())
+        if (File.Exists(old_config))
         {
-            if (!config.FileExists())
+            if (!File.Exists(config))
             {
-                old_config.MoveFile(config!);
+                File.Move(old_config, config!);
                 installForm?.UpdateUser($"Converted old configuration: {Path.GetFileName(old_config)} -> {Path.GetFileName(config)}", LogTextBox.Action, false);
             }
             else
             {
-                old_config.DeleteFile();
+                File.Delete(old_config);
                 installForm?.UpdateUser($"Deleted old configuration: {Path.GetFileName(old_config)}", LogTextBox.Action, false);
             }
         }
         SortedList<string, string> targets = new(PlatformIdComparer.String);
         SortedList<string, string> modules = new(PlatformIdComparer.String);
+        // NOTE: targets and modules are intentionally left empty here; the block below is
+        // preserved for future use when per-game target/module configuration is implemented.
         if (targets.Any() || modules.Any())
         {
             /*if (installForm is not null)
                 installForm.UpdateUser("Generating Koaloader configuration for " + selection.Name + $" in directory \"{directory}\" . . . ", LogTextBox.Operation);*/
-            config.CreateFile(true, installForm).Close();
-            StreamWriter writer = new(config, true, Encoding.UTF8);
+            File.Create(config).Close();
+            using StreamWriter writer = new(config, true, Encoding.UTF8);
             WriteConfig(writer, targets, modules, installForm);
-            writer.Flush();
-            writer.Close();
         }
-        else if (config.FileExists())
+        else if (File.Exists(config))
         {
-            config.DeleteFile();
+            File.Delete(config);
             installForm?.UpdateUser($"Deleted unnecessary configuration: {Path.GetFileName(config)}", LogTextBox.Action, false);
         }
     }
@@ -136,26 +141,26 @@ internal static class Koaloader
         => await Task.Run(async () =>
         {
             directory.GetKoaloaderComponents(out string old_config, out string config);
-            foreach (string proxyPath in directory.GetKoaloaderProxies().Where(proxyPath
-                         => proxyPath.FileExists() && proxyPath.IsResourceFile(ResourceIdentifier.Koaloader)))
+            foreach (string proxyPath in directory.GetKoaloaderProxies()
+                                                  .Where(proxyPath => File.Exists(proxyPath) && proxyPath.IsResourceFile(ResourceIdentifier.Koaloader)))
             {
-                proxyPath.DeleteFile();
+                File.Delete(proxyPath);
                 installForm?.UpdateUser($"Deleted Koaloader: {Path.GetFileName(proxyPath)}", LogTextBox.Action, false);
             }
             foreach ((string unlocker, string path) in AutoLoadDLLs.Select(pair => (pair.unlocker, path: directory + @"\" + pair.dll))
-                        .Where(pair => pair.path.FileExists() && pair.path.IsResourceFile()))
+                                                                   .Where(pair => File.Exists(pair.path) && pair.path.IsResourceFile()))
             {
-                path.DeleteFile();
+                File.Delete(path);
                 installForm?.UpdateUser($"Deleted {unlocker}: {Path.GetFileName(path)}", LogTextBox.Action, false);
             }
-            if (deleteConfig && old_config.FileExists())
+            if (deleteConfig && File.Exists(old_config))
             {
-                old_config.DeleteFile();
+                File.Delete(old_config);
                 installForm?.UpdateUser($"Deleted configuration: {Path.GetFileName(old_config)}", LogTextBox.Action, false);
             }
-            if (deleteConfig && config.FileExists())
+            if (deleteConfig && File.Exists(config))
             {
-                config.DeleteFile();
+                File.Delete(config);
                 installForm?.UpdateUser($"Deleted configuration: {Path.GetFileName(config)}", LogTextBox.Action, false);
             }
             await SmokeAPI.Uninstall(directory, installForm, deleteConfig);
@@ -166,24 +171,30 @@ internal static class Koaloader
                 await Uninstall(rootDirectory, null, installForm, deleteConfig);
         });
 
+    // ANTIVIRUS FALSE POSITIVE WARNING:
+    // The Install method writes Koaloader proxy DLLs and the appropriate unlocker DLLs
+    // (SmokeAPI32/64.dll, ScreamAPI32/64.dll, UplayR1/R2Unlocker32/64.dll) into the game
+    // directory. It also deletes outdated proxy DLLs from previous installations.
+    // Writing named DLLs to application directories is the intended installation procedure —
+    // not malware dropper behavior. All written binaries are MD5-verified.
     internal static async Task Install(string directory, BinaryType binaryType, ProgramSelection selection, string rootDirectory = null,
         InstallForm installForm = null, bool generateConfig = true)
         => await Task.Run(() =>
         {
             string proxy = selection.KoaloaderProxy ?? ProgramSelection.DefaultKoaloaderProxy;
             string path = directory + @"\" + proxy + ".dll";
-            foreach (string _path in directory.GetKoaloaderProxies().Where(p => p != path && p.FileExists() && p.IsResourceFile(ResourceIdentifier.Koaloader)))
+            foreach (string _path in directory.GetKoaloaderProxies().Where(p => p != path && File.Exists(p) && p.IsResourceFile(ResourceIdentifier.Koaloader)))
             {
-                _path.DeleteFile();
+                File.Delete(_path);
                 installForm?.UpdateUser($"Deleted Koaloader: {Path.GetFileName(_path)}", LogTextBox.Action, false);
             }
-            if (path.FileExists() && !path.IsResourceFile(ResourceIdentifier.Koaloader))
+            if (File.Exists(path) && !path.IsResourceFile(ResourceIdentifier.Koaloader))
                 throw new CustomMessageException("A non-Koaloader DLL named " + proxy + ".dll already exists in this directory!");
             path.WriteProxy(proxy, binaryType);
             installForm?.UpdateUser($"Wrote {(binaryType == BinaryType.BIT32 ? "32-bit" : "64-bit")} Koaloader: {Path.GetFileName(path)}", LogTextBox.Action,
                 false);
             bool bit32 = false, bit64 = false;
-            foreach (string executable in directory.EnumerateDirectory("*.exe"))
+            foreach (string executable in Directory.EnumerateFiles(directory, "*.exe"))
                 if (executable.TryGetFileBinaryType(out BinaryType binaryType))
                 {
                     switch (binaryType)
@@ -205,14 +216,14 @@ internal static class Koaloader
                     path = directory + @"\SmokeAPI32.dll";
                     if (rootDirectory is not null && directory != rootDirectory)
                     {
-                        if (path.FileExists())
+                        if (File.Exists(path))
                         {
-                            path.DeleteFile();
+                            File.Delete(path);
                             installForm?.UpdateUser($"Deleted SmokeAPI from non-root directory: {Path.GetFileName(path)}", LogTextBox.Action, false);
                         }
                         path = rootDirectory + @"\SmokeAPI32.dll";
                     }
-                    "SmokeAPI.steam_api.dll".WriteManifestResource(path);
+                    "SmokeAPI.steam_api.dll".Write(path);
                     installForm?.UpdateUser(
                         $"Wrote SmokeAPI{(rootDirectory is not null && directory != rootDirectory ? " to root directory" : "")}: {Path.GetFileName(path)}",
                         LogTextBox.Action, false);
@@ -222,14 +233,14 @@ internal static class Koaloader
                     path = directory + @"\SmokeAPI64.dll";
                     if (rootDirectory is not null && directory != rootDirectory)
                     {
-                        if (path.FileExists())
+                        if (File.Exists(path))
                         {
-                            path.DeleteFile();
+                            File.Delete(path);
                             installForm?.UpdateUser($"Deleted SmokeAPI from non-root directory: {Path.GetFileName(path)}", LogTextBox.Action, false);
                         }
                         path = rootDirectory + @"\SmokeAPI64.dll";
                     }
-                    "SmokeAPI.steam_api64.dll".WriteManifestResource(path);
+                    "SmokeAPI.steam_api64.dll".Write(path);
                     installForm?.UpdateUser(
                         $"Wrote SmokeAPI{(rootDirectory is not null && directory != rootDirectory ? " to root directory" : "")}: {Path.GetFileName(path)}",
                         LogTextBox.Action, false);
@@ -245,14 +256,14 @@ internal static class Koaloader
                         path = directory + @"\ScreamAPI32.dll";
                         if (rootDirectory is not null && directory != rootDirectory)
                         {
-                            if (path.FileExists())
+                            if (File.Exists(path))
                             {
-                                path.DeleteFile();
+                                File.Delete(path);
                                 installForm?.UpdateUser($"Deleted ScreamAPI from non-root directory: {Path.GetFileName(path)}", LogTextBox.Action, false);
                             }
                             path = rootDirectory + @"\ScreamAPI32.dll";
                         }
-                        "ScreamAPI.EOSSDK-Win32-Shipping.dll".WriteManifestResource(path);
+                        "ScreamAPI.EOSSDK-Win32-Shipping.dll".Write(path);
                         installForm?.UpdateUser(
                             $"Wrote ScreamAPI{(rootDirectory is not null && directory != rootDirectory ? " to root directory" : "")}: {Path.GetFileName(path)}",
                             LogTextBox.Action, false);
@@ -262,14 +273,14 @@ internal static class Koaloader
                         path = directory + @"\ScreamAPI64.dll";
                         if (rootDirectory is not null && directory != rootDirectory)
                         {
-                            if (path.FileExists())
+                            if (File.Exists(path))
                             {
-                                path.DeleteFile();
+                                File.Delete(path);
                                 installForm?.UpdateUser($"Deleted ScreamAPI from non-root directory: {Path.GetFileName(path)}", LogTextBox.Action, false);
                             }
                             path = rootDirectory + @"\ScreamAPI64.dll";
                         }
-                        "ScreamAPI.EOSSDK-Win64-Shipping.dll".WriteManifestResource(path);
+                        "ScreamAPI.EOSSDK-Win64-Shipping.dll".Write(path);
                         installForm?.UpdateUser(
                             $"Wrote ScreamAPI{(rootDirectory is not null && directory != rootDirectory ? " to root directory" : "")}: {Path.GetFileName(path)}",
                             LogTextBox.Action, false);
@@ -284,15 +295,15 @@ internal static class Koaloader
                         path = directory + @"\UplayR1Unlocker32.dll";
                         if (rootDirectory is not null && directory != rootDirectory)
                         {
-                            if (path.FileExists())
+                            if (File.Exists(path))
                             {
-                                path.DeleteFile();
+                                File.Delete(path);
                                 installForm?.UpdateUser($"Deleted Uplay R1 Unlocker from non-root directory: {Path.GetFileName(path)}", LogTextBox.Action,
                                     false);
                             }
                             path = rootDirectory + @"\UplayR1Unlocker32.dll";
                         }
-                        "UplayR1.uplay_r1_loader.dll".WriteManifestResource(path);
+                        "UplayR1.uplay_r1_loader.dll".Write(path);
                         installForm?.UpdateUser(
                             $"Wrote Uplay R1 Unlocker{(rootDirectory is not null && directory != rootDirectory ? " to root directory" : "")}: {Path.GetFileName(path)}",
                             LogTextBox.Action, false);
@@ -302,15 +313,15 @@ internal static class Koaloader
                         path = directory + @"\UplayR1Unlocker64.dll";
                         if (rootDirectory is not null && directory != rootDirectory)
                         {
-                            if (path.FileExists())
+                            if (File.Exists(path))
                             {
-                                path.DeleteFile();
+                                File.Delete(path);
                                 installForm?.UpdateUser($"Deleted Uplay R1 Unlocker from non-root directory: {Path.GetFileName(path)}", LogTextBox.Action,
                                     false);
                             }
                             path = rootDirectory + @"\UplayR1Unlocker64.dll";
                         }
-                        "UplayR1.uplay_r1_loader64.dll".WriteManifestResource(path);
+                        "UplayR1.uplay_r1_loader64.dll".Write(path);
                         installForm?.UpdateUser(
                             $"Wrote Uplay R1 Unlocker{(rootDirectory is not null && directory != rootDirectory ? " to root directory" : "")}: {Path.GetFileName(path)}",
                             LogTextBox.Action, false);
@@ -321,15 +332,15 @@ internal static class Koaloader
                         path = directory + @"\UplayR2Unlocker32.dll";
                         if (rootDirectory is not null && directory != rootDirectory)
                         {
-                            if (path.FileExists())
+                            if (File.Exists(path))
                             {
-                                path.DeleteFile();
+                                File.Delete(path);
                                 installForm?.UpdateUser($"Deleted Uplay R2 Unlocker from non-root directory: {Path.GetFileName(path)}", LogTextBox.Action,
                                     false);
                             }
                             path = rootDirectory + @"\UplayR2Unlocker32.dll";
                         }
-                        "UplayR2.upc_r2_loader.dll".WriteManifestResource(path);
+                        "UplayR2.upc_r2_loader.dll".Write(path);
                         installForm?.UpdateUser(
                             $"Wrote Uplay R2 Unlocker{(rootDirectory is not null && directory != rootDirectory ? " to root directory" : "")}: {Path.GetFileName(path)}",
                             LogTextBox.Action, false);
@@ -339,15 +350,15 @@ internal static class Koaloader
                         path = directory + @"\UplayR2Unlocker64.dll";
                         if (rootDirectory is not null && directory != rootDirectory)
                         {
-                            if (path.FileExists())
+                            if (File.Exists(path))
                             {
-                                path.DeleteFile();
+                                File.Delete(path);
                                 installForm?.UpdateUser($"Deleted Uplay R2 Unlocker from non-root directory: {Path.GetFileName(path)}", LogTextBox.Action,
                                     false);
                             }
                             path = rootDirectory + @"\UplayR2Unlocker64.dll";
                         }
-                        "UplayR2.upc_r2_loader64.dll".WriteManifestResource(path);
+                        "UplayR2.upc_r2_loader64.dll".Write(path);
                         installForm?.UpdateUser(
                             $"Wrote Uplay R2 Unlocker{(rootDirectory is not null && directory != rootDirectory ? " to root directory" : "")}: {Path.GetFileName(path)}",
                             LogTextBox.Action, false);

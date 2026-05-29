@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,25 +22,26 @@ internal static class SteamStore
         => await Task.Run(() =>
         {
             List<string> dlcIds = new();
-            if (appData.DLC is null)
+            if (appData.dlc is null)
                 return dlcIds;
-            dlcIds.AddRange(from appId in appData.DLC where appId > 0 select appId.ToString(CultureInfo.InvariantCulture));
+            dlcIds.AddRange(from appId in appData.dlc where appId > 0 select appId.ToString());
             return dlcIds;
         });
 
     internal static async Task<AppData> QueryStoreAPI(string appId, bool isDlc = false, int attempts = 0)
     {
-        while (!Program.Canceled)
+        while (true)
         {
-            attempts++;
+            if (Program.Canceled)
+                return null;
             string cacheFile = ProgramData.AppInfoPath + @$"\{appId}.json";
-            bool cachedExists = cacheFile.FileExists();
+            bool cachedExists = File.Exists(cacheFile);
             if (!cachedExists || ProgramData.CheckCooldown(appId, isDlc ? CooldownDlc : CooldownGame))
             {
                 string response = await HttpClientManager.EnsureGet($"https://store.steampowered.com/api/appdetails?appids={appId}");
                 if (response is not null)
                 {
-                    Dictionary<string, JToken> apps = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(response);
+                    IDictionary<string, JToken> apps = (IDictionary<string, JToken>)JsonConvert.DeserializeObject(response);
                     if (apps is not null)
                         foreach (KeyValuePair<string, JToken> app in apps)
                             try
@@ -48,13 +49,13 @@ internal static class SteamStore
                                 AppDetails appDetails = JsonConvert.DeserializeObject<AppDetails>(app.Value.ToString());
                                 if (appDetails is not null)
                                 {
-                                    AppData data = appDetails.Data;
-                                    if (!appDetails.Success)
+                                    AppData data = appDetails.data;
+                                    if (!appDetails.success)
                                     {
 #if DEBUG
                                         DebugForm.Current.Log(
-                                            "Steam store query failed on attempt #" + attempts + " for " + appId + (isDlc ? " (DLC)" : "")
-                                          + ": Query unsuccessful (" + app.Value.ToString(Formatting.None) + ")", LogTextBox.Warning);
+                                            $"Query unsuccessful for appid {appId}{(isDlc ? " (DLC)" : "")}: {app.Value.ToString(Formatting.None)}",
+                                            LogTextBox.Warning);
 #endif
                                         if (data is null)
                                             return null;
@@ -63,14 +64,14 @@ internal static class SteamStore
                                     {
                                         try
                                         {
-                                            cacheFile.WriteFile(JsonConvert.SerializeObject(data, Formatting.Indented));
+                                            await File.WriteAllTextAsync(cacheFile, JsonConvert.SerializeObject(data, Formatting.Indented));
                                         }
                                         catch
 #if DEBUG
                                             (Exception e)
                                         {
-                                            DebugForm.Current.Log("Steam store query failed on attempt #" + attempts + " for " + appId + (isDlc ? " (DLC)" : "")
-                                                                + ": Unsuccessful serialization (" + e.Message + ")");
+                                            DebugForm.Current.Log(
+                                                $"Unsuccessful serialization of query for appid {appId}{(isDlc ? " (DLC)" : "")}: {e.GetType()} ({e.Message})");
                                         }
 #else
                                         {
@@ -80,22 +81,22 @@ internal static class SteamStore
                                         return data;
                                     }
 #if DEBUG
-                                    DebugForm.Current.Log("Steam store query failed on attempt #" + attempts + " for " + appId + (isDlc ? " (DLC)" : "")
-                                                        + ": Response data null (" + app.Value.ToString(Formatting.None) + ")");
+                                    DebugForm.Current.Log(
+                                        $"Response data null for appid {appId}{(isDlc ? " (DLC)" : "")}: {app.Value.ToString(Formatting.None)}");
 #endif
                                 }
 #if DEBUG
                                 else
-                                    DebugForm.Current.Log("Steam store query failed on attempt #" + attempts + " for " + appId + (isDlc ? " (DLC)" : "")
-                                                        + ": Response details null (" + app.Value.ToString(Formatting.None) + ")");
+                                    DebugForm.Current.Log(
+                                        $"Response details null for appid {appId}{(isDlc ? " (DLC)" : "")}: {app.Value.ToString(Formatting.None)}");
 #endif
                             }
                             catch
 #if DEBUG
                                 (Exception e)
                             {
-                                DebugForm.Current.Log("Steam store query failed on attempt #" + attempts + " for " + appId + (isDlc ? " (DLC)" : "")
-                                                    + ": Unsuccessful deserialization (" + e.Message + ")");
+                                DebugForm.Current.Log(
+                                    $"Unsuccessful deserialization of query for appid {appId}{(isDlc ? " (DLC)" : "")}: {e.GetType()} ({e.Message})");
                             }
 #else
                             {
@@ -104,38 +105,36 @@ internal static class SteamStore
 #endif
 #if DEBUG
                     else
-                        DebugForm.Current.Log("Steam store query failed on attempt #" + attempts + " for " + appId + (isDlc ? " (DLC)" : "")
-                                            + ": Response deserialization null");
+                        DebugForm.Current.Log("Response deserialization null for appid " + appId);
 #endif
                 }
                 else
                 {
 #if DEBUG
-                    DebugForm.Current.Log("Steam store query failed on attempt #" + attempts + " for " + appId + (isDlc ? " (DLC)" : "") + ": Response null",
-                        LogTextBox.Warning);
+                    DebugForm.Current.Log("Response null for appid " + appId, LogTextBox.Warning);
 #endif
                 }
             }
             if (cachedExists)
                 try
                 {
-                    return JsonConvert.DeserializeObject<AppData>(cacheFile.ReadFile());
+                    return JsonConvert.DeserializeObject<AppData>(await File.ReadAllTextAsync(cacheFile));
                 }
                 catch
                 {
-                    cacheFile.DeleteFile();
+                    try
+                    {
+                        File.Delete(cacheFile);
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
                 }
-            if (isDlc)
-                break;
-            if (attempts > 10)
-            {
-#if DEBUG
-                DebugForm.Current.Log("Failed to query Steam store after 10 tries: " + appId);
-#endif
-                break;
-            }
-            Thread.Sleep(1000);
+            if (isDlc || attempts >= 10)
+                return null;
+            await Task.Delay(1000);
+            attempts = ++attempts;
         }
-        return null;
     }
 }

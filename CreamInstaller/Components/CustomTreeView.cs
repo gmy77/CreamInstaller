@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using CreamInstaller.Forms;
 using CreamInstaller.Resources;
-using CreamInstaller.Utility;
 using static CreamInstaller.Resources.Resources;
 
 namespace CreamInstaller.Components;
@@ -14,16 +14,6 @@ namespace CreamInstaller.Components;
 internal sealed class CustomTreeView : TreeView
 {
     private const string KoaloaderToggleString = "Koaloader";
-
-    private static readonly Color C1 = ColorTranslator.FromHtml("#FFFF99");
-    private static readonly Color C2 = ColorTranslator.FromHtml("#696900");
-    private static readonly Color C3 = ColorTranslator.FromHtml("#AAAA69");
-    private static readonly Color C4 = ColorTranslator.FromHtml("#99FFFF");
-    private static readonly Color C5 = ColorTranslator.FromHtml("#006969");
-    private static readonly Color C6 = ColorTranslator.FromHtml("#69AAAA");
-    private static readonly Color C7 = ColorTranslator.FromHtml("#006900");
-    private static readonly Color C8 = ColorTranslator.FromHtml("#69AA69");
-
     private readonly Dictionary<ProgramSelection, Rectangle> checkBoxBounds = new();
     private readonly Dictionary<ProgramSelection, Rectangle> comboBoxBounds = new();
 
@@ -71,8 +61,17 @@ internal sealed class CustomTreeView : TreeView
         backBrush ??= new(BackColor);
         Font font = node.NodeFont ?? Font;
         Brush brush = highlighted ? SystemBrushes.Highlight : backBrush;
+        string text; // = e.Node.Text;
+        Size size;
         Rectangle bounds = node.Bounds;
         Rectangle selectionBounds = bounds;
+        Color color; // = highlighted ? SystemColors.HighlightText : (node.ForeColor != Color.Empty) ? node.ForeColor : node.TreeView.ForeColor;
+        Point point;
+        /*Size textSize = TextRenderer.MeasureText(text, font);
+        Point textLoc = new(bounds.X - 1, bounds.Y);
+        bounds = new Rectangle(textLoc, new Size(textSize.Width, bounds.Height));
+        graphics.FillRectangle(brush, bounds);
+        TextRenderer.DrawText(graphics, text, font, bounds, color, TextFormatFlags.Default);*/
         Form form = FindForm();
         if (form is not SelectForm and not SelectDialogForm)
             return;
@@ -80,25 +79,25 @@ internal sealed class CustomTreeView : TreeView
         Platform platform = (node.Tag as Platform?).GetValueOrDefault(Platform.None);
         if (string.IsNullOrWhiteSpace(platformId) || platform is Platform.None)
             return;
-        Color color = highlighted
-            ? C1
+        color = highlighted
+            ? ColorTranslator.FromHtml("#FFFF99")
             : Enabled
-                ? C2
-                : C3;
-        string text = platform.ToString();
-        Size size = TextRenderer.MeasureText(graphics, text, font);
+                ? ColorTranslator.FromHtml("#696900")
+                : ColorTranslator.FromHtml("#AAAA69");
+        text = platform.ToString();
+        size = TextRenderer.MeasureText(graphics, text, font);
         bounds = bounds with { X = bounds.X + bounds.Width, Width = size.Width };
         selectionBounds = new(selectionBounds.Location, selectionBounds.Size + bounds.Size with { Height = 0 });
         graphics.FillRectangle(brush, bounds);
-        Point point = new(bounds.Location.X - 1, bounds.Location.Y + 1);
+        point = new(bounds.Location.X - 1, bounds.Location.Y + 1);
         TextRenderer.DrawText(graphics, text, font, point, color, TextFormatFlags.Default);
         if (platform is not Platform.Paradox)
         {
             color = highlighted
-                ? C4
+                ? ColorTranslator.FromHtml("#99FFFF")
                 : Enabled
-                    ? C5
-                    : C6;
+                    ? ColorTranslator.FromHtml("#006969")
+                    : ColorTranslator.FromHtml("#69AAAA");
             text = platformId;
             size = TextRenderer.MeasureText(graphics, text, font);
             const int left = -4;
@@ -108,6 +107,8 @@ internal sealed class CustomTreeView : TreeView
             point = new(bounds.Location.X - 1, bounds.Location.Y + 1);
             TextRenderer.DrawText(graphics, text, font, point, color, TextFormatFlags.Default);
         }
+        /*if (highlighted)
+            ControlPaint.DrawFocusRectangle(graphics, selectionBounds, color, SystemColors.Highlight);*/
         if (form is SelectForm)
         {
             ProgramSelection selection = ProgramSelection.FromPlatformId(platform, platformId);
@@ -139,13 +140,15 @@ internal sealed class CustomTreeView : TreeView
                 checkBoxBounds = new(checkBoxBounds.Location, checkBoxBounds.Size + bounds.Size with { Height = 0 });
                 graphics.FillRectangle(backBrush, bounds);
                 point = new(bounds.Location.X - 1 + left, bounds.Location.Y + 1);
-                TextRenderer.DrawText(graphics, text, font, point, Enabled ? C7 : C8, TextFormatFlags.Default);
+                TextRenderer.DrawText(graphics, text, font, point, Enabled ? ColorTranslator.FromHtml("#006900") : ColorTranslator.FromHtml("#69AA69"),
+                    TextFormatFlags.Default);
                 this.checkBoxBounds[selection] = RectangleToClient(checkBoxBounds);
+                string proxy = selection.KoaloaderProxy ?? ProgramSelection.DefaultKoaloaderProxy;
                 if (selection.Koaloader)
                 {
                     comboBoxFont ??= new(font.FontFamily, 6, font.Style, font.Unit, font.GdiCharSet, font.GdiVerticalFont);
                     ComboBoxState comboBoxState = Enabled ? ComboBoxState.Normal : ComboBoxState.Disabled;
-                    text = (selection.KoaloaderProxy ?? ProgramSelection.DefaultKoaloaderProxy) + ".dll";
+                    text = proxy + ".dll";
                     size = TextRenderer.MeasureText(graphics, text, comboBoxFont) + new Size(6, 0);
                     const int padding = 2;
                     bounds = new(bounds.X + bounds.Width, bounds.Y + padding / 2, size.Width, bounds.Height - padding);
@@ -186,13 +189,13 @@ internal sealed class CustomTreeView : TreeView
             }
         if (e.Button is not MouseButtons.Left)
             return;
-        if (comboBoxBounds.Any() && selectForm is not null)
+        if (comboBoxBounds.Count > 0 && selectForm is not null)
             foreach (KeyValuePair<ProgramSelection, Rectangle> pair in comboBoxBounds)
                 if (!ProgramSelection.All.Contains(pair.Key))
                     _ = comboBoxBounds.Remove(pair.Key);
                 else if (pair.Value.Contains(clickPoint))
                 {
-                    List<string> proxies = EmbeddedResources.FindAll(r => r.StartsWith("Koaloader", StringComparison.Ordinal)).Select(p =>
+                    List<string> proxies = EmbeddedResources.FindAll(r => r.StartsWith("Koaloader")).Select(p =>
                     {
                         p.GetProxyInfoFromIdentifier(out string proxyName, out _);
                         return proxyName;
@@ -206,7 +209,7 @@ internal sealed class CustomTreeView : TreeView
                         foreach ((string directory, BinaryType _) in pair.Key.ExecutableDirectories)
                         {
                             string path = directory + @"\" + proxy + ".dll";
-                            if (!path.FileExists() || path.IsResourceFile(ResourceIdentifier.Koaloader))
+                            if (!File.Exists(path) || path.IsResourceFile(ResourceIdentifier.Koaloader))
                                 continue;
                             canUse = false;
                             break;

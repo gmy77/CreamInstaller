@@ -79,10 +79,8 @@ internal static class ParadoxLauncher
     internal static async Task<RepairResult> Repair(Form form, ProgramSelection selection)
     {
         InstallForm installForm = form as InstallForm;
-        if (!Program.AreDllsLockedDialog(form, selection))
-            return form is InstallForm
-                ? throw new CustomMessageException("Repair failed! One or more DLLs crucial to unlocker installation are locked!")
-                : RepairResult.ProgramRunning;
+        if (!Program.IsProgramRunningDialog(form, selection))
+            return form is InstallForm ? throw new CustomMessageException("Repair failed! The launcher is currently running!") : RepairResult.ProgramRunning;
         bool smokeInstalled = false;
         byte[] steamOriginalSdk32 = null;
         byte[] steamOriginalSdk64 = null;
@@ -92,28 +90,28 @@ internal static class ParadoxLauncher
         foreach (string directory in selection.DllDirectories)
         {
             bool koaloaderInstalled = Koaloader.AutoLoadDLLs.Select(pair => (pair.unlocker, path: directory + @"\" + pair.dll))
-               .Any(pair => pair.path.FileExists() && pair.path.IsResourceFile());
+                                               .Any(pair => File.Exists(pair.path) && pair.path.IsResourceFile());
             directory.GetSmokeApiComponents(out string api32, out string api32_o, out string api64, out string api64_o, out string old_config,
                 out string config, out _, out _, out _);
-            smokeInstalled = smokeInstalled || api32_o.FileExists() || api64_o.FileExists()
-                          || (old_config.FileExists() || config.FileExists()) && !koaloaderInstalled
-                          || api32.FileExists() && api32.IsResourceFile(ResourceIdentifier.Steamworks32)
-                          || api64.FileExists() && api64.IsResourceFile(ResourceIdentifier.Steamworks64);
+            smokeInstalled = smokeInstalled || File.Exists(api32_o) || File.Exists(api64_o)
+                          || (File.Exists(old_config) || File.Exists(config)) && !koaloaderInstalled
+                          || File.Exists(api32) && api32.IsResourceFile(ResourceIdentifier.Steamworks32)
+                          || File.Exists(api64) && api64.IsResourceFile(ResourceIdentifier.Steamworks64);
             await SmokeAPI.Uninstall(directory, deleteOthers: false);
-            if (steamOriginalSdk32 is null && api32.FileExists() && !api32.IsResourceFile(ResourceIdentifier.Steamworks32))
-                steamOriginalSdk32 = api32.ReadFileBytes(true);
-            if (steamOriginalSdk64 is null && api64.FileExists() && !api64.IsResourceFile(ResourceIdentifier.Steamworks64))
-                steamOriginalSdk64 = api64.ReadFileBytes(true);
+            if (steamOriginalSdk32 is null && File.Exists(api32) && !api32.IsResourceFile(ResourceIdentifier.Steamworks32))
+                steamOriginalSdk32 = await File.ReadAllBytesAsync(api32);
+            if (steamOriginalSdk64 is null && File.Exists(api64) && !api64.IsResourceFile(ResourceIdentifier.Steamworks64))
+                steamOriginalSdk64 = await File.ReadAllBytesAsync(api64);
             directory.GetScreamApiComponents(out api32, out api32_o, out api64, out api64_o, out config, out string log);
-            screamInstalled = screamInstalled || api32_o.FileExists() || api64_o.FileExists()
-                           || (config.FileExists() || log.FileExists()) && !koaloaderInstalled
-                           || api32.FileExists() && api32.IsResourceFile(ResourceIdentifier.EpicOnlineServices32)
-                           || api64.FileExists() && api64.IsResourceFile(ResourceIdentifier.EpicOnlineServices64);
+            screamInstalled = screamInstalled || File.Exists(api32_o) || File.Exists(api64_o)
+                           || (File.Exists(config) || File.Exists(log)) && !koaloaderInstalled
+                           || File.Exists(api32) && api32.IsResourceFile(ResourceIdentifier.EpicOnlineServices32)
+                           || File.Exists(api64) && api64.IsResourceFile(ResourceIdentifier.EpicOnlineServices64);
             await ScreamAPI.Uninstall(directory, deleteOthers: false);
-            if (epicOriginalSdk32 is null && api32.FileExists() && !api32.IsResourceFile(ResourceIdentifier.EpicOnlineServices32))
-                epicOriginalSdk32 = api32.ReadFileBytes(true);
-            if (epicOriginalSdk64 is null && api64.FileExists() && !api64.IsResourceFile(ResourceIdentifier.EpicOnlineServices64))
-                epicOriginalSdk64 = api64.ReadFileBytes(true);
+            if (epicOriginalSdk32 is null && File.Exists(api32) && !api32.IsResourceFile(ResourceIdentifier.EpicOnlineServices32))
+                epicOriginalSdk32 = await File.ReadAllBytesAsync(api32);
+            if (epicOriginalSdk64 is null && File.Exists(api64) && !api64.IsResourceFile(ResourceIdentifier.EpicOnlineServices64))
+                epicOriginalSdk64 = await File.ReadAllBytesAsync(api64);
         }
         using DialogForm dialogForm = new(form);
         if (steamOriginalSdk32 is not null || steamOriginalSdk64 is not null || epicOriginalSdk32 is not null || epicOriginalSdk64 is not null)
@@ -124,13 +122,13 @@ internal static class ParadoxLauncher
                 directory.GetSmokeApiComponents(out string api32, out _, out string api64, out _, out _, out _, out _, out _, out _);
                 if (steamOriginalSdk32 is not null && api32.IsResourceFile(ResourceIdentifier.Steamworks32))
                 {
-                    steamOriginalSdk32.WriteResource(api32);
+                    steamOriginalSdk32.Write(api32);
                     installForm?.UpdateUser("Corrected Steamworks: " + api32, LogTextBox.Action);
                     neededRepair = true;
                 }
                 if (steamOriginalSdk64 is not null && api64.IsResourceFile(ResourceIdentifier.Steamworks64))
                 {
-                    steamOriginalSdk64.WriteResource(api64);
+                    steamOriginalSdk64.Write(api64);
                     installForm?.UpdateUser("Corrected Steamworks: " + api64, LogTextBox.Action);
                     neededRepair = true;
                 }
@@ -139,13 +137,13 @@ internal static class ParadoxLauncher
                 directory.GetScreamApiComponents(out api32, out _, out api64, out _, out _, out _);
                 if (epicOriginalSdk32 is not null && api32.IsResourceFile(ResourceIdentifier.EpicOnlineServices32))
                 {
-                    epicOriginalSdk32.WriteResource(api32);
+                    epicOriginalSdk32.Write(api32);
                     installForm?.UpdateUser("Corrected Epic Online Services: " + api32, LogTextBox.Action);
                     neededRepair = true;
                 }
                 if (epicOriginalSdk64 is not null && api64.IsResourceFile(ResourceIdentifier.EpicOnlineServices64))
                 {
-                    epicOriginalSdk64.WriteResource(api64);
+                    epicOriginalSdk64.Write(api64);
                     installForm?.UpdateUser("Corrected Epic Online Services: " + api64, LogTextBox.Action);
                     neededRepair = true;
                 }

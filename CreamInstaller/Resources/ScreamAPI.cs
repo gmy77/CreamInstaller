@@ -39,16 +39,14 @@ internal static class ScreamAPI
         {
             /*if (installForm is not null)
                 installForm.UpdateUser("Generating ScreamAPI configuration for " + selection.Name + $" in directory \"{directory}\" . . . ", LogTextBox.Operation);*/
-            config.CreateFile(true, installForm).Close();
-            StreamWriter writer = new(config, true, Encoding.UTF8);
+            File.Create(config).Close();
+            using StreamWriter writer = new(config, true, Encoding.UTF8);
             WriteConfig(writer, new(overrideCatalogItems.ToDictionary(pair => pair.Key, pair => pair.Value), PlatformIdComparer.String),
                 new(entitlements.ToDictionary(pair => pair.Key, pair => pair.Value), PlatformIdComparer.String), installForm);
-            writer.Flush();
-            writer.Close();
         }
-        else if (config.FileExists())
+        else if (File.Exists(config))
         {
-            config.DeleteFile();
+            File.Delete(config);
             installForm?.UpdateUser($"Deleted unnecessary configuration: {Path.GetFileName(config)}", LogTextBox.Action, false);
         }
     }
@@ -101,66 +99,72 @@ internal static class ScreamAPI
         writer.WriteLine("}");
     }
 
+    // ANTIVIRUS FALSE POSITIVE WARNING:
+    // Uninstall deletes the ScreamAPI DLL and restores the original EOSSDK-Win32/64-Shipping.dll
+    // from the *_o backup. Renaming EOS SDK DLLs may trigger heuristic DLL-hijack detection.
     internal static async Task Uninstall(string directory, InstallForm installForm = null, bool deleteOthers = true)
         => await Task.Run(() =>
         {
             directory.GetScreamApiComponents(out string api32, out string api32_o, out string api64, out string api64_o, out string config, out string log);
-            if (api32_o.FileExists())
+            if (File.Exists(api32_o))
             {
-                if (api32.FileExists())
+                if (File.Exists(api32))
                 {
-                    api32.DeleteFile();
+                    File.Delete(api32);
                     installForm?.UpdateUser($"Deleted ScreamAPI: {Path.GetFileName(api32)}", LogTextBox.Action, false);
                 }
-                api32_o.MoveFile(api32!);
+                File.Move(api32_o, api32!);
                 installForm?.UpdateUser($"Restored EOS: {Path.GetFileName(api32_o)} -> {Path.GetFileName(api32)}", LogTextBox.Action, false);
             }
-            if (api64_o.FileExists())
+            if (File.Exists(api64_o))
             {
-                if (api64.FileExists())
+                if (File.Exists(api64))
                 {
-                    api64.DeleteFile();
+                    File.Delete(api64);
                     installForm?.UpdateUser($"Deleted ScreamAPI: {Path.GetFileName(api64)}", LogTextBox.Action, false);
                 }
-                api64_o.MoveFile(api64!);
+                File.Move(api64_o, api64!);
                 installForm?.UpdateUser($"Restored EOS: {Path.GetFileName(api64_o)} -> {Path.GetFileName(api64)}", LogTextBox.Action, false);
             }
             if (!deleteOthers)
                 return;
-            if (config.FileExists())
+            if (File.Exists(config))
             {
-                config.DeleteFile();
+                File.Delete(config);
                 installForm?.UpdateUser($"Deleted configuration: {Path.GetFileName(config)}", LogTextBox.Action, false);
             }
-            if (log.FileExists())
+            if (File.Exists(log))
             {
-                log.DeleteFile();
+                File.Delete(log);
                 installForm?.UpdateUser($"Deleted log: {Path.GetFileName(log)}", LogTextBox.Action, false);
             }
         });
 
+    // ANTIVIRUS FALSE POSITIVE WARNING:
+    // Install renames EOSSDK-Win32/64-Shipping.dll to *_o backups and writes ScreamAPI in
+    // their place. Replacing Epic Online Services SDK DLLs is the intended installation method.
     internal static async Task Install(string directory, ProgramSelection selection, InstallForm installForm = null, bool generateConfig = true)
         => await Task.Run(() =>
         {
             directory.GetScreamApiComponents(out string api32, out string api32_o, out string api64, out string api64_o, out _, out _);
-            if (api32.FileExists() && !api32_o.FileExists())
+            if (File.Exists(api32) && !File.Exists(api32_o))
             {
-                api32.MoveFile(api32_o!);
+                File.Move(api32, api32_o!);
                 installForm?.UpdateUser($"Renamed EOS: {Path.GetFileName(api32)} -> {Path.GetFileName(api32_o)}", LogTextBox.Action, false);
             }
-            if (api32_o.FileExists())
+            if (File.Exists(api32_o))
             {
-                "ScreamAPI.EOSSDK-Win32-Shipping.dll".WriteManifestResource(api32);
+                "ScreamAPI.EOSSDK-Win32-Shipping.dll".Write(api32);
                 installForm?.UpdateUser($"Wrote ScreamAPI: {Path.GetFileName(api32)}", LogTextBox.Action, false);
             }
-            if (api64.FileExists() && !api64_o.FileExists())
+            if (File.Exists(api64) && !File.Exists(api64_o))
             {
-                api64.MoveFile(api64_o!);
+                File.Move(api64, api64_o!);
                 installForm?.UpdateUser($"Renamed EOS: {Path.GetFileName(api64)} -> {Path.GetFileName(api64_o)}", LogTextBox.Action, false);
             }
-            if (api64_o.FileExists())
+            if (File.Exists(api64_o))
             {
-                "ScreamAPI.EOSSDK-Win64-Shipping.dll".WriteManifestResource(api64);
+                "ScreamAPI.EOSSDK-Win64-Shipping.dll".Write(api64);
                 installForm?.UpdateUser($"Wrote ScreamAPI: {Path.GetFileName(api64)}", LogTextBox.Action, false);
             }
             if (generateConfig)
