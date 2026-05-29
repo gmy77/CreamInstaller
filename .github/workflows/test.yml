@@ -10,24 +10,34 @@ jobs:
   test:
     name: Test
     runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
       actions: read
       contents: read
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 7.x.x
+        dotnet-version: '9.x'
 
     - name: Restore
-      run: dotnet restore
+      run: dotnet restore CreamInstaller/CreamInstaller.csproj
 
     - name: Build
-      run: dotnet build --no-restore --configuration Release /p:UseSharedCompilation=false
+      run: dotnet build CreamInstaller/CreamInstaller.csproj --no-restore --configuration Release /p:UseSharedCompilation=false
 
     - name: Test
-      run: dotnet test --no-build --verbosity normal --configuration Release
+      shell: pwsh
+      run: |
+        $testProjects = Get-ChildItem -Recurse -Filter *.csproj |
+          Where-Object { Select-String -Path $_.FullName -Pattern 'Microsoft\.NET\.Test\.Sdk|xunit|nunit|MSTest' -Quiet }
+        if ($testProjects) {
+          dotnet test --no-build --configuration Release --verbosity normal
+        } else {
+          Write-Host "No test projects found - skipping test execution."
+        }

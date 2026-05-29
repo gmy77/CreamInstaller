@@ -900,7 +900,6 @@ internal sealed partial class SelectForm : CustomForm
             selectionTreeView.AfterCheck += OnTreeViewNodeCheckedChanged;
             // Restore window position/size from settings
             AppSettings.Current.RestoreFormState(this, restoreSize: true);
-            AppSettings.Current.SortByName = sortCheckBox.Checked;
             sortCheckBox.Checked = AppSettings.Current.SortByName;
             OnLoad(forceProvideChoices: true);
         }
@@ -1132,7 +1131,11 @@ internal sealed partial class SelectForm : CustomForm
     }
 
     private void OnSortCheckBoxChanged(object sender, EventArgs e)
-        => selectionTreeView.TreeViewNodeSorter = sortCheckBox.Checked ? PlatformIdComparer.NodeText : PlatformIdComparer.NodeName;
+    {
+        selectionTreeView.TreeViewNodeSorter = sortCheckBox.Checked ? PlatformIdComparer.NodeText : PlatformIdComparer.NodeName;
+        AppSettings.Current.SortByName = sortCheckBox.Checked;
+        AppSettings.Current.Save();
+    }
 
     // ── Search / Filter ────────────────────────────────────────────────────────
     private void OnSearchTextChanged(object sender, EventArgs e)
