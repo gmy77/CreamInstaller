@@ -49,7 +49,7 @@ internal static class ParadoxLauncher
                 paradoxLauncher.ExtraDlc.Add(selection.Id, (selection.Name, selection.AllDlc));
                 paradoxLauncher.ExtraSelectedDlc.Add(selection.Id, (selection.Name, selection.SelectedDlc));
             }
-            if (!paradoxLauncher.ExtraDlc.Any())
+            if (paradoxLauncher.ExtraDlc.Count == 0)
                 foreach (ProgramSelection selection in ProgramSelection.AllSafe.Where(s => s != paradoxLauncher && s.Publisher == "Paradox Interactive"))
                 {
                     paradoxLauncher.ExtraDlc.Add(selection.Id, (selection.Name, selection.AllDlc));
@@ -64,7 +64,7 @@ internal static class ParadoxLauncher
         if (paradoxLauncher is not null && paradoxLauncher.Enabled)
         {
             PopulateDlc(paradoxLauncher);
-            if (!paradoxLauncher.ExtraDlc.Any())
+            if (paradoxLauncher.ExtraDlc.Count == 0)
             {
                 using DialogForm dialogForm = new(form);
                 return dialogForm.Show(SystemIcons.Warning,

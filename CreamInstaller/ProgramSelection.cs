@@ -123,7 +123,7 @@ internal sealed class ProgramSelection
             Toggle(appId, dlcApp, enabled);
             break;
         }
-        Enabled = SelectedDlc.Any() || ExtraSelectedDlc.Any();
+        Enabled = SelectedDlc.Count != 0 || ExtraSelectedDlc.Count != 0;
     }
 
     private void Validate()
@@ -139,7 +139,7 @@ internal sealed class ProgramSelection
             return;
         }
         _ = DllDirectories.RemoveAll(directory => !Directory.Exists(directory));
-        if (!DllDirectories.Any())
+        if (DllDirectories.Count == 0)
             _ = All.Remove(this);
     }
 

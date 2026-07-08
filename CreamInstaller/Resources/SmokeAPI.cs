@@ -56,7 +56,7 @@ internal static class SmokeAPI
             File.Delete(old_config);
             installForm?.UpdateUser($"Deleted old configuration: {Path.GetFileName(old_config)}", LogTextBox.Action, false);
         }
-        if (selection.ExtraSelectedDlc.Any(p => p.Value.dlc.Any()) || overrideDlc.Any() || injectDlc.Any())
+        if (selection.ExtraSelectedDlc.Any(p => p.Value.dlc.Count != 0) || overrideDlc.Count != 0 || injectDlc.Count != 0)
         {
             /*if (installForm is not null)
                 installForm.UpdateUser("Generating SmokeAPI configuration for " + selection.Name + $" in directory \"{directory}\" . . . ", LogTextBox.Operation);*/
