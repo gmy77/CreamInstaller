@@ -83,6 +83,11 @@ internal static class Program
             _ = Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            // Slightly larger base UI font. Forms use AutoScaleMode.Font, so this
+            // scales controls without an explicit font (e.g. the game/DLC list)
+            // proportionally, improving readability. Must run before any control
+            // is created.
+            Application.SetDefaultFont(new Font("Segoe UI", 9.75f));
             Application.ApplicationExit += OnApplicationExit;
             Application.ThreadException += (_, e) => e.Exception.HandleFatalException();
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
