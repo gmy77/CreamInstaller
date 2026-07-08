@@ -20,6 +20,7 @@ internal sealed partial class MainForm : CustomForm
 {
     private CancellationTokenSource cancellationTokenSource;
     private Version latestVersion;
+    private SelectForm selectForm;
 
     private UpdateManager updateManager;
     private IReadOnlyList<Version> versions;
@@ -31,24 +32,27 @@ internal sealed partial class MainForm : CustomForm
         headerLabel.Text = Program.ApplicationNameShort;
     }
 
-    private void StartProgram()
+    private void StartProgram(bool cancelUpdateCheck = true)
     {
-        if (cancellationTokenSource is not null)
+        if (cancelUpdateCheck && cancellationTokenSource is not null)
         {
             cancellationTokenSource.Cancel();
             cancellationTokenSource.Dispose();
             cancellationTokenSource = null;
         }
+        if (selectForm is null)
+        {
 #pragma warning disable CA2000 // Dispose objects before losing scope
-        SelectForm form = new();
+            selectForm = new SelectForm();
 #pragma warning restore CA2000 // Dispose objects before losing scope
-        form.InheritLocation(this);
-        form.FormClosing += (_, _) => Close();
-        form.Show();
-        Hide();
+            selectForm.InheritLocation(this);
+            selectForm.FormClosing += (_, _) => Close();
+            selectForm.Show();
 #if DEBUG
-        DebugForm.Current.Attach(form);
+            DebugForm.Current.Attach(selectForm);
 #endif
+        }
+        Hide();
     }
 
     private async void OnLoad()
@@ -72,9 +76,15 @@ internal sealed partial class MainForm : CustomForm
         if (latestVersion is null)
         {
             cancellationTokenSource = new();
+            cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
             try
             {
-                CheckForUpdatesResult checkForUpdatesResult = await updateManager.CheckForUpdatesAsync(cancellationTokenSource.Token);
+                Task<CheckForUpdatesResult> checkForUpdatesTask = updateManager.CheckForUpdatesAsync(cancellationTokenSource.Token);
+                // Don't hold the program hostage to the network: if the check isn't done
+                // within the grace period, open the game list and let it finish in the background.
+                if (await Task.WhenAny(checkForUpdatesTask, Task.Delay(2000)) != checkForUpdatesTask)
+                    StartProgram(cancelUpdateCheck: false);
+                CheckForUpdatesResult checkForUpdatesResult = await checkForUpdatesTask;
 #if !DEBUG
                 if (checkForUpdatesResult.CanUpdate)
                 {
@@ -99,10 +109,12 @@ internal sealed partial class MainForm : CustomForm
 #endif
             finally
             {
-                cancellationTokenSource.Dispose();
+                cancellationTokenSource?.Dispose();
                 cancellationTokenSource = null;
             }
         }
+        if (IsDisposed)
+            return; // the program was closed while the background check was still running
         if (latestVersion is null)
         {
             updateManager.Dispose();
@@ -117,6 +129,8 @@ internal sealed partial class MainForm : CustomForm
             updateButton.Enabled    = true;
             updateButton.Click     += OnUpdate;
             changelogTreeView.Visible = true;
+            if (!Visible)
+                Show(); // the program was started while the check was still running; resurface the update prompt
             Version currentVersion = new(Program.Version);
 #if DEBUG
             foreach (Version version in versions.Where(v => (v > currentVersion || v == latestVersion) && !changelogTreeView.Nodes.ContainsKey(v.ToString())))
