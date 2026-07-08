@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using HtmlAgilityPack;
@@ -27,16 +28,34 @@ internal static class HttpClientManager
     // No data is sent to any third-party server beyond the query string.
     internal static async Task<string> EnsureGet(string url)
     {
-        try
+        // Retry transient failures (dropped connections, timeouts, 5xx) with
+        // exponential backoff so a momentary network hiccup no longer causes an
+        // outright null result. 4xx and the final attempt keep the original
+        // silent-failure contract (return null) to avoid changing callers.
+        const int maxAttempts = 3;
+        for (int attempt = 1; ; attempt++)
         {
-            using HttpRequestMessage request = new(HttpMethod.Get, url);
-            using HttpResponseMessage response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-            _ = response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync();
-        }
-        catch
-        {
-            return null;
+            try
+            {
+                using HttpRequestMessage request = new(HttpMethod.Get, url);
+                using HttpResponseMessage response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                _ = response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (HttpRequestException e) when (attempt < maxAttempts && e.StatusCode is null or >= HttpStatusCode.InternalServerError)
+            {
+                // Connection failure (StatusCode null) or server error (5xx): back off and retry.
+                await Task.Delay(TimeSpan.FromMilliseconds(500 * (1 << (attempt - 1))));
+            }
+            catch (TaskCanceledException) when (attempt < maxAttempts)
+            {
+                // Request timed out: back off and retry.
+                await Task.Delay(TimeSpan.FromMilliseconds(500 * (1 << (attempt - 1))));
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 
