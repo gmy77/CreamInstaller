@@ -15,7 +15,7 @@ internal sealed partial class SelectDialogForm : CustomForm
     internal List<(Platform platform, string id, string name)> QueryUser(string groupBoxText,
         List<(Platform platform, string id, string name, bool alreadySelected)> choices)
     {
-        if (!choices.Any())
+        if (choices.Count == 0)
             return null;
         groupBox.Text = groupBoxText;
         allCheckBox.Enabled = false;
@@ -27,13 +27,13 @@ internal sealed partial class SelectDialogForm : CustomForm
             OnTreeNodeChecked(node);
             _ = selectionTreeView.Nodes.Add(node);
         }
-        if (!selected.Any())
+        if (selected.Count == 0)
             OnLoad(null, null);
         allCheckBox.CheckedChanged -= OnAllCheckBoxChanged;
         allCheckBox.Checked = selectionTreeView.Nodes.Cast<TreeNode>().All(n => n.Checked);
         allCheckBox.CheckedChanged += OnAllCheckBoxChanged;
         allCheckBox.Enabled = true;
-        acceptButton.Enabled = selected.Any();
+        acceptButton.Enabled = selected.Count != 0;
         saveButton.Enabled = acceptButton.Enabled;
         loadButton.Enabled = ProgramData.ReadProgramChoices() is not null;
         OnResize(null, null);
@@ -44,7 +44,7 @@ internal sealed partial class SelectDialogForm : CustomForm
     private void OnTreeNodeChecked(object sender, TreeViewEventArgs e)
     {
         OnTreeNodeChecked(e.Node);
-        acceptButton.Enabled = selected.Any();
+        acceptButton.Enabled = selected.Count != 0;
         saveButton.Enabled = acceptButton.Enabled;
     }
 
@@ -83,7 +83,7 @@ internal sealed partial class SelectDialogForm : CustomForm
     private void OnLoad(object sender, EventArgs e)
     {
         List<(Platform platform, string id)> choices = ProgramData.ReadProgramChoices().ToList();
-        if (!choices.Any())
+        if (choices.Count == 0)
             return;
         foreach (TreeNode node in selectionTreeView.Nodes)
         {

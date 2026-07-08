@@ -52,7 +52,7 @@ internal sealed partial class DialogForm : CustomForm
         }
         if (customFormIcon is not null)
             Icon = customFormIcon;
-        if (!links.Any())
+        if (links.Count == 0)
             return ShowDialog();
         foreach (LinkLabel.Link link in links)
             _ = descriptionLabel.Links.Add(link);

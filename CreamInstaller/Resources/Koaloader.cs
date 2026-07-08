@@ -82,7 +82,7 @@ internal static class Koaloader
         SortedList<string, string> modules = new(PlatformIdComparer.String);
         // NOTE: targets and modules are intentionally left empty here; the block below is
         // preserved for future use when per-game target/module configuration is implemented.
-        if (targets.Any() || modules.Any())
+        if (targets.Count != 0 || modules.Count != 0)
         {
             /*if (installForm is not null)
                 installForm.UpdateUser("Generating Koaloader configuration for " + selection.Name + $" in directory \"{directory}\" . . . ", LogTextBox.Operation);*/
@@ -102,8 +102,8 @@ internal static class Koaloader
         writer.WriteLine("{");
         writer.WriteLine("  \"logging\": false,");
         writer.WriteLine("  \"enabled\": true,");
-        writer.WriteLine("  \"auto_load\": " + (modules.Any() ? "false" : "true") + ",");
-        if (targets.Any())
+        writer.WriteLine("  \"auto_load\": " + (modules.Count != 0 ? "false" : "true") + ",");
+        if (targets.Count != 0)
         {
             writer.WriteLine("  \"targets\": [");
             KeyValuePair<string, string> lastTarget = targets.Last();
@@ -117,7 +117,7 @@ internal static class Koaloader
         }
         else
             writer.WriteLine("  \"targets\": []");
-        if (modules.Any())
+        if (modules.Count != 0)
         {
             writer.WriteLine("  \"modules\": [");
             KeyValuePair<string, string> lastModule = modules.Last();

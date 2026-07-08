@@ -518,7 +518,7 @@ internal static class Resources
                     executables.Add((path, binaryType));
                 Thread.Sleep(1);
             }
-            return !executables.Any() ? null : executables;
+            return executables.Count == 0 ? null : executables;
         });
 
     private static bool IsCommonIncorrectExecutable(this string rootDirectory, string path)
@@ -583,7 +583,7 @@ internal static class Resources
                         dllDirectories.Add(subDirectory);
                 }
             }
-            return !dllDirectories.Any() ? null : dllDirectories;
+            return dllDirectories.Count == 0 ? null : dllDirectories;
         });
 
     internal static void GetCreamApiComponents(this string directory, out string api32, out string api32_o, out string api64, out string api64_o,
@@ -608,7 +608,7 @@ internal static class Resources
 #pragma warning restore CA5351
         using FileStream stream = File.OpenRead(filePath);
         byte[] hash = md5.ComputeHash(stream);
-        string result = BitConverter.ToString(hash).Replace("-", "").ToUpperInvariant();
+        string result = Convert.ToHexString(hash);
         md5Cache[filePath] = result;
         return result;
     }
