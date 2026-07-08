@@ -65,6 +65,11 @@ internal static class SteamLibrary
                  || string.IsNullOrWhiteSpace(buildId))
                     continue;
                 string gameDirectory = (libraryDirectory + @"\common\" + installdir).BeautifyPath();
+                // Skip games that are no longer installed: Steam can leave a stale
+                // appmanifest_*.acf behind after an uninstall while the game's files
+                // are gone, which otherwise surfaces uninstalled games in the list.
+                if (!Directory.Exists(gameDirectory))
+                    continue;
                 if (games.Any(g => g.appId == appId && g.gameDirectory == gameDirectory))
                     continue;
                 if (!int.TryParse(appId, out int _))
