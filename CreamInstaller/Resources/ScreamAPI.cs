@@ -61,7 +61,7 @@ internal static class ScreamAPI
         writer.WriteLine("  \"block_metrics\": false,");
         writer.WriteLine("  \"catalog_items\": {");
         writer.WriteLine("    \"unlock_all\": true,");
-        if (overrideCatalogItems.Any())
+        if (overrideCatalogItems.Count != 0)
         {
             writer.WriteLine("    \"override\": [");
             KeyValuePair<string, (DlcType type, string name, string icon)> lastOverrideCatalogItem = overrideCatalogItems.Last();
@@ -80,7 +80,7 @@ internal static class ScreamAPI
         writer.WriteLine("  \"entitlements\": {");
         writer.WriteLine("    \"unlock_all\": true,");
         writer.WriteLine("    \"auto_inject\": true,");
-        if (entitlements.Any())
+        if (entitlements.Count != 0)
         {
             writer.WriteLine("    \"inject\": [");
             KeyValuePair<string, (DlcType type, string name, string icon)> lastEntitlement = entitlements.Last();

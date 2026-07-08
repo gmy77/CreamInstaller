@@ -103,7 +103,7 @@ internal sealed partial class SelectForm : CustomForm
 
     private async Task GetApplicablePrograms(IProgress<int> progress)
     {
-        if (programsToScan is null || !programsToScan.Any())
+        if (programsToScan is null || programsToScan.Count == 0)
             return;
         int totalGameCount = 0;
         int completeGameCount = 0;
@@ -255,7 +255,7 @@ internal sealed partial class SelectForm : CustomForm
                     }
                     steamGamesToCheck = 0;
                     ProgramSelection selection = ProgramSelection.FromPlatformId(Platform.Steam, appId) ?? new ProgramSelection();
-                    selection.Enabled = allCheckBox.Checked || selection.SelectedDlc.Any() || selection.ExtraSelectedDlc.Any();
+                    selection.Enabled = allCheckBox.Checked || selection.SelectedDlc.Count != 0 || selection.ExtraSelectedDlc.Count != 0;
                     if (koaloaderAllCheckBox.Checked)
                         selection.Koaloader = true;
                     selection.Id = appId;
@@ -337,7 +337,7 @@ internal sealed partial class SelectForm : CustomForm
                     List<Task> dlcTasks = new();
                     List<(string id, string name, string product, string icon, string developer)> entitlementIds
                         = await EpicStore.QueryEntitlements(@namespace);
-                    if (entitlementIds.Any())
+                    if (entitlementIds.Count != 0)
                         foreach ((string id, string name, string product, string icon, string developer) in entitlementIds)
                         {
                             if (Program.Canceled)
@@ -352,7 +352,7 @@ internal sealed partial class SelectForm : CustomForm
                             });
                             dlcTasks.Add(task);
                         }
-                    if ( /*!catalogItems.Any() && */!entitlements.Any())
+                    if ( /*!catalogItems.Any() && */entitlements.IsEmpty)
                     {
                         RemoveFromRemainingGames(name);
                         return;
@@ -366,7 +366,7 @@ internal sealed partial class SelectForm : CustomForm
                         await task;
                     }
                     ProgramSelection selection = ProgramSelection.FromPlatformId(Platform.Epic, @namespace) ?? new ProgramSelection();
-                    selection.Enabled = allCheckBox.Checked || selection.SelectedDlc.Any() || selection.ExtraSelectedDlc.Any();
+                    selection.Enabled = allCheckBox.Checked || selection.SelectedDlc.Count != 0 || selection.ExtraSelectedDlc.Count != 0;
                     if (koaloaderAllCheckBox.Checked)
                         selection.Koaloader = true;
                     selection.Id = @namespace;
@@ -402,7 +402,7 @@ internal sealed partial class SelectForm : CustomForm
                         catalogItemsNode.Checked = selection.SelectedDlc.Any(pair => pair.Value.type == DlcType.CatalogItem);
                         if (catalogItemsNode.Parent is null)
                             programNode.Nodes.Add(catalogItemsNode);*/
-                        if (entitlements.Any())
+                        if (!entitlements.IsEmpty)
                             /*TreeNode entitlementsNode = treeNodes.Find(s => s.Tag is Platform.Epic && s.Name == @namespace + "_entitlements") ?? new();
                             entitlementsNode.Tag = selection.Platform;
                             entitlementsNode.Name = @namespace + "_entitlements";
@@ -456,7 +456,7 @@ internal sealed partial class SelectForm : CustomForm
                     if (Program.Canceled)
                         return;
                     ProgramSelection selection = ProgramSelection.FromPlatformId(Platform.Ubisoft, gameId) ?? new ProgramSelection();
-                    selection.Enabled = allCheckBox.Checked || selection.SelectedDlc.Any() || selection.ExtraSelectedDlc.Any();
+                    selection.Enabled = allCheckBox.Checked || selection.SelectedDlc.Count != 0 || selection.ExtraSelectedDlc.Count != 0;
                     if (koaloaderAllCheckBox.Checked)
                         selection.Koaloader = true;
                     selection.Id = gameId;
@@ -517,7 +517,7 @@ internal sealed partial class SelectForm : CustomForm
         ShowProgressBar();
         await ProgramData.Setup();
         bool scan = forceScan;
-        if (!scan && (programsToScan is null || !programsToScan.Any() || forceProvideChoices))
+        if (!scan && (programsToScan is null || programsToScan.Count == 0 || forceProvideChoices))
         {
             List<(Platform platform, string id, string name, bool alreadySelected)> gameChoices = new();
             if (Directory.Exists(ParadoxLauncher.InstallPath))
@@ -535,11 +535,11 @@ internal sealed partial class SelectForm : CustomForm
             foreach ((string gameId, string name, string _) in (await UbisoftLibrary.GetGames()).Where(g => !Program.IsGameBlocked(g.name, g.gameDirectory)))
                 gameChoices.Add((Platform.Ubisoft, gameId, name,
                     programsToScan is not null && programsToScan.Any(p => p.platform is Platform.Ubisoft && p.id == gameId)));
-            if (gameChoices.Any())
+            if (gameChoices.Count != 0)
             {
                 using SelectDialogForm form = new(this);
                 List<(Platform platform, string id, string name)> choices = form.QueryUser("Choose which programs and/or games to scan for DLC:", gameChoices);
-                scan = choices is not null && choices.Any();
+                scan = choices is not null && choices.Count != 0;
                 const string retry = "\n\nPress the \"Rescan Programs / Games\" button to re-choose.";
                 if (scan)
                 {
@@ -594,11 +594,11 @@ internal sealed partial class SelectForm : CustomForm
         OnLoadDlc(null, null);
         OnLoadKoaloader(null, null);
         HideProgressBar();
-        selectionTreeView.Enabled = ProgramSelection.All.Any();
+        selectionTreeView.Enabled = ProgramSelection.All.Count != 0;
         allCheckBox.Enabled = selectionTreeView.Enabled;
         koaloaderAllCheckBox.Enabled = selectionTreeView.Enabled;
         noneFoundLabel.Visible = !selectionTreeView.Enabled;
-        installButton.Enabled = ProgramSelection.AllEnabled.Any();
+        installButton.Enabled = ProgramSelection.AllEnabled.Count != 0;
         uninstallButton.Enabled = installButton.Enabled;
         saveButton.Enabled = CanSaveDlc();
         loadButton.Enabled = CanLoadDlc();
@@ -628,7 +628,7 @@ internal sealed partial class SelectForm : CustomForm
         allCheckBox.CheckedChanged -= OnAllCheckBoxChanged;
         allCheckBox.Checked = TreeNodes.TrueForAll(node => node.Text == "Unknown" || node.Checked);
         allCheckBox.CheckedChanged += OnAllCheckBoxChanged;
-        installButton.Enabled = ProgramSelection.AllEnabled.Any();
+        installButton.Enabled = ProgramSelection.AllEnabled.Count != 0;
         uninstallButton.Enabled = installButton.Enabled;
         saveButton.Enabled = CanSaveDlc();
         resetButton.Enabled = CanResetDlc();
@@ -678,7 +678,7 @@ internal sealed partial class SelectForm : CustomForm
         }
     }
 
-    private List<TreeNode> GatherTreeNodes(TreeNodeCollection nodeCollection)
+    private static List<TreeNode> GatherTreeNodes(TreeNodeCollection nodeCollection)
     {
         List<TreeNode> treeNodes = new();
         foreach (TreeNode rootNode in nodeCollection)
@@ -765,7 +765,7 @@ internal sealed partial class SelectForm : CustomForm
                 }
                 if (File.Exists(appInfoVDF))
                     queries.Add(new("Open SteamCMD Query", "Notepad", (_, _) => Diagnostics.OpenFileInNotepad(appInfoVDF)));
-                if (queries.Any())
+                if (queries.Count != 0)
                 {
                     items.Add(new ToolStripSeparator());
                     foreach (ContextMenuItem query in queries)
@@ -913,7 +913,7 @@ internal sealed partial class SelectForm : CustomForm
 
     private void OnAccept(bool uninstall = false)
     {
-        if (!ProgramSelection.All.Any())
+        if (ProgramSelection.All.Count == 0)
             return;
         if (ProgramSelection.AllEnabled.Any(selection => !Program.IsProgramRunningDialog(this, selection)))
             return;

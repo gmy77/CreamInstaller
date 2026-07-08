@@ -55,7 +55,7 @@ internal static class EpicStore
         foreach (Element element in searchStore)
         {
             string title = element.Title;
-            string product = element.CatalogNs is not null && element.CatalogNs.Mappings.Any() ? element.CatalogNs.Mappings.First().PageSlug : null;
+            string product = element.CatalogNs is not null && element.CatalogNs.Mappings.Length != 0 ? element.CatalogNs.Mappings.First().PageSlug : null;
             string icon = null;
             for (int i = 0; i < element.KeyImages?.Length; i++)
             {
@@ -72,7 +72,7 @@ internal static class EpicStore
         foreach (Element element in catalogOffers)
         {
             string title = element.Title;
-            string product = element.CatalogNs is not null && element.CatalogNs.Mappings.Any() ? element.CatalogNs.Mappings.First().PageSlug : null;
+            string product = element.CatalogNs is not null && element.CatalogNs.Mappings.Length != 0 ? element.CatalogNs.Mappings.First().PageSlug : null;
             string icon = null;
             for (int i = 0; i < element.KeyImages?.Length; i++)
             {
