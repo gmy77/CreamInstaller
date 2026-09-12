@@ -146,7 +146,6 @@
 		<PackageReference Include="HtmlAgilityPack" Version="1.13.0" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 		<PackageReference Include="Onova" Version="2.6.13" />
-		<PackageReference Include="System.Reflection.Metadata" Version="10.0.12" />
 		<PackageReference Include="System.ServiceModel.Primitives" Version="4.10.0" />
 	</ItemGroup>
 	<ItemGroup>
