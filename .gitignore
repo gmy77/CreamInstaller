@@ -337,3 +337,6 @@ ASALocalRun/
 *.zip
 *.dll
 *.dll.*
+
+# Local build output (zipped release)
+SOURCE/
