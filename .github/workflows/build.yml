@@ -20,7 +20,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.x'
+          dotnet-version: '10.x'
 
       - name: Restore dependencies
         run: dotnet restore CreamInstaller/CreamInstaller.csproj
@@ -36,5 +36,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: CreamInstaller-build
-          path: CreamInstaller/bin/Release/net9.0-windows/
+          path: CreamInstaller/bin/Release/net10.0-windows/
           retention-days: 7
