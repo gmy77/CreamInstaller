@@ -84,6 +84,9 @@ aperta, non ancora mergiata**. È un progetto Python: nessun `.sln`, si apre la 
 - `354da45` — Backup `.bak` (una volta sola) di `cream_api.ini` / `DLC.txt` esistenti prima di
   sovrascriverli; SteamDB non più troncato a 50 DLC; niente elaborazioni sovrapposte nella GUI.
 - `d63dc8e` — SteamDB: nome del DLC letto dalla colonna giusta (prima poteva uscire data/AppID).
+- `40c42f0` — Nomi DLC dello scraping `/dlc/` con entità HTML decodificate (`&amp;` → `&`; stessi
+  DLC e ID di prima, cambia solo il testo del nome); errore di scansione ora visibile (prima `NameError`).
+  Nota: la cache `.dlc_cache_pro` può tenere i vecchi nomi fino a 24h → cancellala per rigenerarli subito.
 
 ### 📋 Da fare
 1. **Testare su Windows** il branch: avvio, scansione, generazione config, e doppio clic su
