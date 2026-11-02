@@ -66,12 +66,12 @@ Non urgente — l'app funziona bene com'è.
 
 ## 🐍 Progetto collegato: GetDLCInfoFromSteamDB (Python)
 
-Repo `gmy77/GetDLCInfoFromSteamDB`. **Attenzione:** su `master` c'è solo README/`dist/`; tutto il
-codice sta sul branch `claude/fix-steamdb-readonly-channel-011CUfbq6BhKdSqvV61ALjAU` → **PR #3
-aperta, non ancora mergiata**. È un progetto Python: nessun `.sln`, si apre la cartella
-(VS Code / VS 2026 "Apri cartella"), si avvia con `run_gui.bat`, l'exe si crea con `BUILD_WINDOWS.bat`.
+Repo `gmy77/GetDLCInfoFromSteamDB`. **PR #3 mergiata in `master` il 2 novembre 2026** (merge
+commit `f9eda38`, review Codex pulita): ora `master` contiene tutto il codice. È un progetto Python:
+nessun `.sln`, si apre la cartella (VS Code / VS 2026 "Apri cartella"), si avvia con `run_gui.bat`,
+l'exe si crea con `BUILD_WINDOWS.bat`.
 
-### ✅ Fatto (ottobre–novembre 2026), commit sulla PR #3
+### ✅ Fatto (ottobre–novembre 2026), commit della PR #3 (ora in `master`)
 - `68143b8` — GUI: la ricerca non perde più giochi; niente decine di schede browser su "Select All";
   niente loop infinito di riavvio se l'installazione delle dipendenze fallisce; tolto l'anti-debug
   che chiudeva l'app senza messaggi.
@@ -89,10 +89,10 @@ aperta, non ancora mergiata**. È un progetto Python: nessun `.sln`, si apre la 
   Nota: la cache `.dlc_cache_pro` può tenere i vecchi nomi fino a 24h → cancellala per rigenerarli subito.
 
 ### 📋 Da fare
-1. **Testare su Windows** il branch: avvio, scansione, generazione config, e doppio clic su
-   "Process All" durante un'elaborazione (il secondo deve essere ignorato).
-2. Se tutto ok → **mergiare la PR #3 in `master`**.
-3. Opzionali (sicuri, a parte): log delle eccezioni silenziose ("nessun DLC" vs errore di rete);
+1. **Testare su Windows** `master` (mergiato prima del test, su richiesta): avvio, scansione,
+   generazione config, e doppio clic su "Process All" durante un'elaborazione (il secondo deve
+   essere ignorato). Se qualcosa non va, si corregge con una nuova PR.
+2. Opzionali (sicuri, a parte): log delle eccezioni silenziose ("nessun DLC" vs errore di rete);
    `cream_api.ini` accanto a `steam_api64.dll` invece che nella root del gioco; unificare le due
    codebase (`steam_dlc_manager.py`/`steam_dlc_gui.py` vs `steam_dlc_pro.py`, refactor grande).
 - Regola fissa: **"il giocattolo non deve rompersi"** — nessun cambio al percorso dati che funziona
@@ -100,6 +100,6 @@ aperta, non ancora mergiata**. È un progetto Python: nessun `.sln`, si apre la 
 
 ## ▶️ Come riprendere da una sessione nuova
 - CreamInstaller: `main` è la fonte di verità (tutto il lavoro sopra è mergiato).
-- GetDLCInfoFromSteamDB: il lavoro è sul branch della **PR #3** (vedi sezione sopra).
+- GetDLCInfoFromSteamDB: `master` è la fonte di verità (PR #3 mergiata). Nuovo lavoro → nuovo branch + PR.
 - Vincolo fisso del progetto: **NIENTE codice offuscato** (niente PyArmor ecc.).
 - CI su Windows (`windows-latest`, .NET 10). Il progetto è `net10.0-windows` → compilabile solo su Windows.
